@@ -1,0 +1,5 @@
+/* move modal */
+.overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.28); z-index:10000 }
+.modal{ background:var(--card); border:1px solid var(--stroke); border-radius:16px; width:min(92vw,480px); padding:16px }
+.modal .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:10px }
+.list .opt{ display:flex; gap:8px; align-items:center; padding:8px 10px; border:1px solid var(--stroke); border-radius:10px; margin:6px 0; cursor:pointer }

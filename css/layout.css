@@ -1,0 +1,14 @@
+/* top bar + main grid */
+.topbar{padding:12px 16px; display:flex; align-items:center; justify-content:space-between}
+.topbar .actions{gap:10px}
+
+.dash{
+  margin-top:16px; display:grid; grid-template-columns: 320px 1fr; gap:18px;
+}
+@media (max-width: 920px){ .dash{ grid-template-columns:1fr } }
+
+.drop{
+  margin:0 0 18px; border:2px dashed var(--stroke); border-radius:18px;
+  height:160px; display:flex; align-items:center; justify-content:center;
+  color:var(--muted); background:color-mix(in oklab, var(--card), transparent 40%);
+}

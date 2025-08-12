@@ -1,0 +1,7 @@
+/* toasts */
+#toasts{ position:fixed; right:14px; bottom:14px; display:flex; flex-direction:column; gap:8px; z-index:11000 }
+.toast{ padding:10px 12px; border-radius:12px; background:var(--bg-elev); border:1px solid var(--stroke); color:var(--text) }
+.toast.success{ border-color:#2ecc71 }
+.toast.error{ border-color:#ff5c5c }
+.toast.info{ opacity:.95 }
+.toast small{ display:block; opacity:.8; margin-top:4px }

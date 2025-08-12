@@ -1,0 +1,10 @@
+/* auth screen */
+.auth-wrap{display:grid; place-items:center; min-height:100vh}
+.auth-card{width:min(92vw, 480px); padding:18px}
+.brand{display:flex; align-items:center; gap:10px}
+.logo-dot{width:12px; height:12px; border-radius:50%; background:var(--brand)}
+.auth-row{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0}
+.auth-actions{display:flex; gap:10px}
+.divider{margin:12px 0; text-align:center}
+.oauth{display:flex; gap:10px; flex-wrap:wrap}
+.btn-apple,.btn-google{display:flex; gap:8px; align-items:center; padding:10px 12px}

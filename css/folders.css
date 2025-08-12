@@ -1,0 +1,9 @@
+/* left column folders */
+.folders{padding:14px}
+.folders-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+#folder-list{list-style:none; margin:0; padding:0; display:flex; gap:10px; flex-direction:column}
+#folder-list li{
+  padding:12px 14px; border:1px solid var(--stroke); border-radius:12px; cursor:pointer;
+  background:color-mix(in oklab, var(--card), transparent 30%);
+}
+#folder-list li.active{ outline:3px solid color-mix(in oklab, var(--brand), transparent 60%) }

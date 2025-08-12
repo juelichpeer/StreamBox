@@ -1,0 +1,36 @@
+/* file grid + rows */
+.main{padding:14px}
+#file-list.grid{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:16px }
+#file-list.row-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px }
+
+.file-card, .row-item{
+  background:var(--bg-elev); border:1px solid var(--stroke); border-radius:18px; position:relative; overflow:hidden;
+}
+.file-card .thumb{height:210px; display:grid; place-items:center; background:color-mix(in oklab, var(--card), transparent 30%)}
+.file-card .thumb img, .row-thumb img{max-width:100%; max-height:100%; display:block; object-fit:contain}
+.file-name{padding:10px 12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+.row-item{ display:grid; grid-template-columns: 70px 1fr auto; align-items:center; padding:8px 10px }
+.row-thumb{ height:50px; width:70px; display:grid; place-items:center; background:color-mix(in oklab, var(--card), transparent 30%) }
+
+.kebab, .kebab-row{
+  position:absolute; top:10px; right:10px; display:grid; place-items:center;
+  width:36px; height:36px; border-radius:12px; background:color-mix(in oklab, var(--bg-elev), transparent 10%);
+}
+.kebab-row{ position:static }
+
+/* context menu + overlay (glass) */
+.menu-overlay{ position:fixed; inset:0; z-index:10040; background:rgba(0,0,0,.02) }
+.menu{
+  position:fixed; z-index:10050; max-width:min(92vw,360px); min-width:200px;
+  border-radius:14px; padding:8px; background:color-mix(in oklab, var(--card), white 6%);
+  border:1px solid color-mix(in oklab, var(--stroke), transparent 50%);
+  box-shadow:0 12px 36px rgba(0,0,0,.22), 0 1px 0 color-mix(in oklab, var(--stroke), transparent 40%) inset;
+  backdrop-filter: blur(8px) saturate(1.1);
+}
+.menu button{ all:unset; display:block; width:100%; padding:12px 14px; font-size:14px; line-height:1.25; cursor:pointer; border-radius:10px }
+.menu button+button{ margin-top:4px }
+.menu button:hover{ background:color-mix(in oklab, var(--bg-elev-strong), var(--brand-ghost) 60%) }
+@media (max-width:680px){
+  .menu.sheet{ left:12px!important; right:12px!important; bottom:max(12px, env(safe-area-inset-bottom))!important; top:auto!important; width:auto!important; min-width:0 }
+}

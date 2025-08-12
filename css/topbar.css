@@ -1,0 +1,3 @@
+/* header buttons */
+.topbar button{background:color-mix(in oklab, var(--bg-elev), white 3%)}
+.topbar button:hover{background:color-mix(in oklab, var(--bg-elev-strong), var(--brand-ghost) 50%)}
