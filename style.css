@@ -193,3 +193,38 @@ button.primary:hover { box-shadow: 0 10px 28px color-mix(in oklab, var(--brand),
 
 /* Focus */
 :focus-visible { outline:3px solid var(--brand-ghost); outline-offset:2px; border-radius:12px; }
+/* ===== Menus: mobile-safe & crisp ===== */
+.menu {
+  position: fixed;             /* not absolute — works in PWA/iOS */
+  z-index: 10050;
+  max-width: min(92vw, 360px);
+  border-radius: 14px;
+  padding: 6px;
+}
+
+.menu button {
+  all: unset;
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.25;
+  cursor: pointer;
+  border-radius: 10px;
+}
+.menu button + button { margin-top: 4px; }
+.menu button:hover { background: color-mix(in oklab, var(--bg-elev-strong), var(--brand-ghost) 60%); }
+
+/* Bottom-sheet on small screens */
+@media (max-width: 680px) {
+  .menu.sheet {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    top: auto !important;
+    transform: none !important;
+    width: auto !important;
+  }
+}
+
+/* Fix overlapping toasts vs menus */
+#toasts { z-index: 11000; }
