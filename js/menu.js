@@ -3,8 +3,17 @@ import { toast } from './config.js';
 import { renameFile, openMoveModal, moveToTrash, restoreFile, deleteForever } from './files.js';
 
 export function openMenu(ev, f, url) {
-  document.querySelectorAll('.menu').forEach(m => m.remove());
+  // cleanup
+  document.querySelectorAll('.menu, .menu-overlay').forEach(n => n.remove());
 
+  // overlay to catch taps & lock scroll
+  const overlay = document.createElement('div');
+  overlay.className = 'menu-overlay';
+  overlay.addEventListener('click', close);
+  document.body.appendChild(overlay);
+  document.body.classList.add('no-scroll');
+
+  // menu
   const m = document.createElement('div');
   m.className = 'menu';
   m.addEventListener('click', e => e.stopPropagation());
@@ -12,7 +21,7 @@ export function openMenu(ev, f, url) {
   const add = (label, fn) => {
     const b = document.createElement('button');
     b.textContent = label;
-    b.onclick = () => { m.remove(); fn(); };
+    b.onclick = () => { close(); fn(); };
     m.appendChild(b);
   };
 
@@ -21,7 +30,8 @@ export function openMenu(ev, f, url) {
     add('Download', () => {
       if (!url) return;
       const a = document.createElement('a');
-      a.href = url; a.download = f.filename; document.body.appendChild(a); a.click(); a.remove();
+      a.href = url; a.download = f.filename;
+      document.body.appendChild(a); a.click(); a.remove();
     });
     add('Rename', () => renameFile(f));
     add('Move to…', () => openMoveModal(f));
@@ -33,20 +43,35 @@ export function openMenu(ev, f, url) {
 
   document.body.appendChild(m);
 
-  const PAD = 10;
+  // position relative to the kebab button (robust in PWA)
+  const anchor = ev.currentTarget || ev.target;
+  const r = anchor.getBoundingClientRect();
   const mw = Math.min(360, window.innerWidth * 0.92);
-  const clickX = (ev.clientX ?? 12) + window.scrollX;
-  const clickY = (ev.clientY ?? 12) + window.scrollY;
-  let mh = m.getBoundingClientRect().height || 160;
+  const PAD = 10;
 
-  let left = clickX + 6;
-  let top  = clickY + 6;
+  // default: below-right
+  let left = r.left + window.scrollX - (mw - r.width);
+  let top  = r.bottom + window.scrollY + 6;
 
-  if (left + mw + PAD > window.scrollX + window.innerWidth) left = Math.max(PAD, clickX - mw - 6);
-  if (top + mh + PAD > window.scrollY + window.innerHeight) top = Math.max(PAD, clickY - mh - 6);
+  // constrain horizontally
+  if (left < PAD) left = PAD;
+  if (left + mw + PAD > window.scrollX + window.innerWidth) {
+    left = Math.max(PAD, window.scrollX + window.innerWidth - mw - PAD);
+  }
+
+  // set to measure height, then possibly flip
+  m.style.left = `${left}px`;
+  m.style.top  = `${top}px`;
+  const mh = m.getBoundingClientRect().height || 160;
+
+  // flip above if would overflow bottom
+  if (top + mh + PAD > window.scrollY + window.innerHeight) {
+    top = Math.max(PAD, r.top + window.scrollY - mh - 6);
+  }
 
   const isMobile = window.innerWidth <= 680;
   if (isMobile) {
+    // bottom sheet on phones
     m.classList.add('sheet');
     m.style.left   = '12px';
     m.style.right  = '12px';
@@ -57,8 +82,13 @@ export function openMenu(ev, f, url) {
     m.style.top  = `${top}px`;
   }
 
-  const close = () => { m.remove(); document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey, true); };
-  const onDoc = (e) => { if (!e.target.closest('.menu') && !e.target.closest('.kebab') && !e.target.closest('.kebab-row')) close(); };
-  const onKey = (e) => { if (e.key === 'Escape') close(); };
-  setTimeout(() => { document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey, true); }, 0);
+  // close helpers
+  function close(){
+    m.remove();
+    overlay.remove();
+    document.body.classList.remove('no-scroll');
+    document.removeEventListener('keydown', onKey, true);
+  }
+  function onKey(e){ if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey, true);
 }

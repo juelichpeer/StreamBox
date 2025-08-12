@@ -22,7 +22,7 @@
 /* context menu + overlay (glass) */
 .menu-overlay{ position:fixed; inset:0; z-index:10040; background:rgba(0,0,0,.02) }
 .menu{
-  position:fixed; z-index:10050; max-width:min(92vw,360px); min-width:200px;
+  position:fixed; z-index:10050; max-width:min(92vw,360px); min-width:210px;
   border-radius:14px; padding:8px; background:color-mix(in oklab, var(--card), white 6%);
   border:1px solid color-mix(in oklab, var(--stroke), transparent 50%);
   box-shadow:0 12px 36px rgba(0,0,0,.22), 0 1px 0 color-mix(in oklab, var(--stroke), transparent 40%) inset;
@@ -34,3 +34,12 @@
 @media (max-width:680px){
   .menu.sheet{ left:12px!important; right:12px!important; bottom:max(12px, env(safe-area-inset-bottom))!important; top:auto!important; width:auto!important; min-width:0 }
 }
+
+/* bigger, clearer kebab buttons with dot icon */
+.kebab, .kebab-row{
+  position:absolute; top:10px; right:10px; display:grid; place-items:center;
+  width:36px; height:36px; border-radius:12px; font-size:18px;
+  background:color-mix(in oklab, var(--bg-elev), transparent 10%); cursor:pointer;
+}
+.kebab-row{ position:static; justify-self:end }
+.kebab::before, .kebab-row::before{ content:"⋮"; }
