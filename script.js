@@ -1,5 +1,7 @@
 /*************************************************
- * STREAMBOX – Full app with Theme Toggle + Auth + Files + Folders + 2FA + Move modal
+ * STREAMBOX – Full app with Theme Toggle + Auth + OAuth + Files + Folders
+ * Trash/Restore/Delete Forever + Rename + Move modal + Profile + TOTP 2FA
+ * + PWA (relative SW registration + Install button)
  *************************************************/
 
 /* ===== Setup ===== */
@@ -8,9 +10,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const $ = (id)=>document.getElementById(id);
-const state = { tab:'files', layout:'grid', currentFolder:null, folders:[], mfa: { enrolling: null, activeFactors: [] } };
+const state = { tab:'files', layout:'grid', currentFolder:null, folders:[], mfa:{enrolling:null, activeFactors:[]} };
 let APP_INITED = false;
-function initAppOnce(){ if(APP_INITED) return; APP_INITED=true; showApp(); loadFolders(); listFiles(); ensureProfile(); initTOTPUI(); refreshTOTPStatus(); }
+function initAppOnce(){ if(APP_INITED) return; APP_INITED=true; showApp(); applySavedTheme(); loadFolders(); listFiles(); ensureProfile(); initTOTPUI(); refreshTOTPStatus(); }
 
 /* ===== Theme Toggle ===== */
 function applySavedTheme(){
@@ -22,7 +24,7 @@ function applySavedTheme(){
 function toggleTheme(){
   const cur = document.body.getAttribute('data-theme'); // null | 'light' | 'dark'
   let next;
-  if (!cur) { // currently following system — flip to explicit dark or light based on system
+  if (!cur) {
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     next = prefersDark ? 'light' : 'dark';
   } else {
@@ -43,7 +45,13 @@ const isPdf = e => e==='pdf';
 const bucketFor = row => row.deleted_at ? 'user-trash' : 'user-files';
 
 /* ===== Toasts ===== */
-function toast(msg,type='info',detail=''){ const box=$('toasts'); const t=document.createElement('div'); t.className='toast '+type; t.innerHTML=esc(msg)+(detail?`<small>${esc(detail)}</small>`:''); box.appendChild(t); setTimeout(()=>t.remove(),4500); }
+function toast(msg,type='info',detail=''){
+  const box=$('toasts'); if(!box) return alert(msg+(detail?`\n${detail}`:''));
+  const t=document.createElement('div'); t.className='toast '+type;
+  t.innerHTML=esc(msg)+(detail?`<small>${esc(detail)}</small>`:'');
+  box.appendChild(t);
+  setTimeout(()=>t.remove(),4500);
+}
 const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 /* ===== Navigation ===== */
@@ -52,16 +60,23 @@ function showApp(){  $('auth-wrap').style.display='none';  $('app-box').style.di
 function showProfile(){ $('auth-wrap').style.display='none'; $('app-box').style.display='none'; $('profile-box').style.display='block'; loadProfile(); refreshTOTPStatus(); }
 
 /* ===== Auth (email/pass + OAuth) ===== */
-async function signUp(){ const email=$('email')?.value?.trim(), pw=$('password')?.value||''; if(!email||!pw) return toast('Enter email and password','error'); const {error}=await sb.auth.signUp({email,password:pw}); if(error) return toast('Sign up failed','error',error.message); toast('Sign up success','success','Confirm by email, then sign in'); }
-
+async function signUp(){
+  const email=$('email')?.value?.trim(), pw=$('password')?.value||'';
+  if(!email||!pw) return toast('Enter email and password','error');
+  const {error}=await sb.auth.signUp({email,password:pw});
+  if(error) return toast('Sign up failed','error',error.message);
+  toast('Sign up success','success','Confirm by email, then sign in');
+}
 async function signIn(){
   const email=$('email')?.value?.trim(), pw=$('password')?.value||'';
   if(!email||!pw) return toast('Enter email and password','error');
 
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
 
+  // success
   if (data?.session) { toast('Login success','success'); return; }
 
+  // MFA required → run TOTP challenge
   if (error && /MFA|multi[- ]?factor|factor/i.test(error.message||'')) {
     try {
       const lf = await sb.auth.mfa.listFactors();
@@ -80,16 +95,22 @@ async function signIn(){
 
   if (error) return toast('Login failed','error',error.message);
 }
-
 async function signOut(){ await sb.auth.signOut(); toast('Signed out','info'); }
 async function oauth(provider){
-  const redirectTo = window.location.origin;
+  const redirectTo = window.location.origin + (window.location.pathname || '');
   const { error } = await sb.auth.signInWithOAuth({ provider, options:{ redirectTo } });
   if (error) toast('OAuth error','error',error.message); else toast('Redirecting…','info');
 }
 
-sb.auth.onAuthStateChange((_e,session)=>{ const logged=!!session?.user; $('user-email').textContent = logged ? (session.user.email||'') : ''; if(logged) initAppOnce(); else showAuth(); });
-sb.auth.getUser().then(({data})=>{ if(data?.user){ $('user-email').textContent=data.user.email||''; initAppOnce(); } });
+// Session watcher
+sb.auth.onAuthStateChange((_e,session)=>{
+  const logged=!!session?.user;
+  $('user-email').textContent = logged ? (session.user.email||'') : '';
+  if(logged) initAppOnce(); else showAuth();
+});
+sb.auth.getUser().then(({data})=>{
+  if(data?.user){ $('user-email').textContent=data.user.email||''; initAppOnce(); }
+});
 
 /* ===== Folders ===== */
 async function loadFolders(){
@@ -101,17 +122,54 @@ async function loadFolders(){
 }
 function renderFolders(){
   const ul=$('folder-list'); if(!ul) return; ul.innerHTML='';
-  state.folders.forEach(f=>{ const li=document.createElement('li'); li.textContent=f.name; if(state.currentFolder?.id===f.id) li.classList.add('active'); li.onclick=()=>{state.currentFolder=f; listFiles(); renderFolders();}; ul.appendChild(li); });
+  state.folders.forEach(f=>{
+    const li=document.createElement('li'); li.textContent=f.name;
+    if(state.currentFolder?.id===f.id) li.classList.add('active');
+    li.onclick=()=>{state.currentFolder=f; listFiles(); renderFolders();};
+    ul.appendChild(li);
+  });
   updateSectionTitle();
 }
-function updateSectionTitle(){ const base=state.tab==='files'?'Your Files':'Trash'; const suffix=state.currentFolder?.id?` — ${state.currentFolder.name}`:''; const el=$('section-title'); if(el) el.textContent=base+suffix; }
-async function newFolder(){ const name=prompt('Folder name:'); if(name===null) return; const clean=name.trim(); if(!clean) return toast('Folder name cannot be empty','error'); const {data:sess}=await sb.auth.getSession(); if(!sess?.session) return toast('Not logged in','error'); const uid=sess.session.user.id; const {data,error}=await sb.from('folders').insert([{user_id:uid,name:clean}]).select().single(); if(error) return toast('Create folder error','error',error.message); toast('Folder created','success'); state.currentFolder=data; await loadFolders(); await listFiles(); }
-async function renameFolder(){ if(!state.currentFolder?.id) return toast('Select a folder (not "All Files")','info'); let name=prompt('New folder name:',state.currentFolder.name); if(name===null) return; name=name.trim(); if(!name) return toast('Folder name cannot be empty','error'); const {error}=await sb.from('folders').update({name}).eq('id',state.currentFolder.id); if(error) return toast('Rename folder error','error',error.message); toast('Folder renamed','success'); state.currentFolder.name=name; renderFolders(); listFiles(); }
-async function deleteFolder(){ if(!state.currentFolder?.id) return toast('Select a folder (not "All Files")','info'); if(!confirm('Delete this folder? Move or delete files first.')) return; const {data:filesIn,error:qErr}=await sb.from('files').select('id').eq('folder_id',state.currentFolder.id).limit(1); if(qErr) return toast('Check folder error','error',qErr.message); if(filesIn?.length) return toast('Folder not empty','error','Move or delete files first'); const {error}=await sb.from('folders').delete().eq('id',state.currentFolder.id); if(error) return toast('Delete folder error','error',error.message); toast('Folder deleted','success'); state.currentFolder={id:null,name:'All Files'}; await loadFolders(); await listFiles(); }
+function updateSectionTitle(){
+  const base=state.tab==='files'?'Your Files':'Trash';
+  const suffix=state.currentFolder?.id?` — ${state.currentFolder.name}`:'';
+  const el=$('section-title'); if(el) el.textContent=base+suffix;
+}
+async function newFolder(){
+  const name=prompt('Folder name:'); if(name===null) return;
+  const clean=name.trim(); if(!clean) return toast('Folder name cannot be empty','error');
+  const {data:sess}=await sb.auth.getSession(); if(!sess?.session) return toast('Not logged in','error');
+  const uid=sess.session.user.id;
+  const {data,error}=await sb.from('folders').insert([{user_id:uid,name:clean}]).select().single();
+  if(error) return toast('Create folder error','error',error.message);
+  toast('Folder created','success'); state.currentFolder=data;
+  await loadFolders(); await listFiles();
+}
+async function renameFolder(){
+  if(!state.currentFolder?.id) return toast('Select a folder (not "All Files")','info');
+  let name=prompt('New folder name:',state.currentFolder.name); if(name===null) return;
+  name=name.trim(); if(!name) return toast('Folder name cannot be empty','error');
+  const {error}=await sb.from('folders').update({name}).eq('id',state.currentFolder.id);
+  if(error) return toast('Rename folder error','error',error.message);
+  toast('Folder renamed','success'); state.currentFolder.name=name;
+  renderFolders(); listFiles();
+}
+async function deleteFolder(){
+  if(!state.currentFolder?.id) return toast('Select a folder (not "All Files")','info');
+  if(!confirm('Delete this folder? Move or delete files first.')) return;
+  const {data:filesIn,error:qErr}=await sb.from('files').select('id').eq('folder_id',state.currentFolder.id).limit(1);
+  if(qErr) return toast('Check folder error','error',qErr.message);
+  if(filesIn?.length) return toast('Folder not empty','error','Move or delete files first');
+  const {error}=await sb.from('folders').delete().eq('id',state.currentFolder.id);
+  if(error) return toast('Delete folder error','error',error.message);
+  toast('Folder deleted','success'); state.currentFolder={id:null,name:'All Files'};
+  await loadFolders(); await listFiles();
+}
 
 /* ===== Files ===== */
 async function handleFiles(files){
-  const {data:sess}=await sb.auth.getSession(); if(!sess?.session) return toast('Not logged in','error'); const uid=sess.session.user.id;
+  const {data:sess}=await sb.auth.getSession(); if(!sess?.session) return toast('Not logged in','error');
+  const uid=sess.session.user.id;
   for(const file of files){
     const folderSeg = state.currentFolder?.id ? `${state.currentFolder.name}/` : '';
     const path = `${uid}/${folderSeg}${file.name}`;
@@ -124,15 +182,20 @@ async function handleFiles(files){
 }
 async function listFiles(){
   const list=$('file-list'); if(!list) return;
-  list.className = state.layout==='grid' ? 'grid' : 'row-list'; list.innerHTML='';
+  list.className = state.layout==='grid' ? 'grid' : 'row-list';
+  list.innerHTML='';
   let q=sb.from('files').select('*').order('created_at',{ascending:false});
   q = state.tab==='files' ? q.is('deleted_at',null) : q.not('deleted_at','is',null);
   if(state.currentFolder?.id) q=q.eq('folder_id',state.currentFolder.id);
   const {data,error}=await q; if(error) return toast('List error','error',error.message);
   if(!data?.length){ updateSectionTitle(); return; }
+
   for(const f of data){
-    const bucket=bucketFor(f); const sig=await sb.storage.from(bucket).createSignedUrl(f.filepath,180); const url=sig.data?.signedUrl||null;
+    const bucket=bucketFor(f);
+    const sig=await sb.storage.from(bucket).createSignedUrl(f.filepath,180);
+    const url=sig.data?.signedUrl||null;
     const e=ext(f.filename);
+
     if(state.layout==='grid'){
       const li=document.createElement('li'); li.className='file-card';
       const keb=document.createElement('div'); keb.className='kebab'; keb.onclick=(ev)=>{ev.stopPropagation(); openMenu(ev,f,url);};
@@ -140,12 +203,14 @@ async function listFiles(){
       if(url && isImg(e)) thumb.innerHTML=`<img src="${url}" alt="${f.filename}" loading="lazy">`;
       else if(url && isVid(e)) thumb.innerHTML=`<video src="${url}" controls></video>`;
       else if(url && isAud(e)) thumb.innerHTML=`<audio src="${url}" controls></audio>`;
-      else if(isPdf(e)) thumb.innerHTML=`<div>PDF</div>`; else thumb.innerHTML=`<div>${(e||'FILE').toUpperCase()}</div>`;
+      else if(isPdf(e)) thumb.innerHTML=`<div>PDF</div>`;
+      else thumb.innerHTML=`<div>${(e||'FILE').toUpperCase()}</div>`;
       const name=document.createElement('div'); name.className='file-name'; name.textContent=f.filename; name.title=f.filename;
       li.appendChild(thumb); li.appendChild(name); li.appendChild(keb); list.appendChild(li);
     } else {
       const row=document.createElement('li'); row.className='row-item';
-      const th=document.createElement('div'); th.className='row-thumb'; if(url && isImg(e)) th.innerHTML=`<img src="${url}" alt="${f.filename}" loading="lazy">`;
+      const th=document.createElement('div'); th.className='row-thumb';
+      if(url && isImg(e)) th.innerHTML=`<img src="${url}" alt="${f.filename}" loading="lazy">`;
       const nm=document.createElement('div'); nm.className='row-name'; nm.textContent=f.filename; nm.title=f.filename;
       const keb=document.createElement('div'); keb.className='kebab-row'; keb.onclick=(ev)=>{ev.stopPropagation(); openMenu(ev,f,url);};
       row.appendChild(th); row.appendChild(nm); row.appendChild(keb); list.appendChild(row);
@@ -154,7 +219,7 @@ async function listFiles(){
   updateSectionTitle();
 }
 
-/* ===== Move modal + actions ===== */
+/* ===== Move / Rename / Trash ===== */
 let MOVE_CTX = { file:null, selectedId:null };
 function openMenu(ev,f,url){
   document.querySelectorAll('.menu').forEach(m=>m.remove());
@@ -174,8 +239,7 @@ function openMenu(ev,f,url){
   document.addEventListener('click',()=>m.remove(),{once:true});
 }
 function openMoveModal(fileRow){
-  MOVE_CTX.file = fileRow;
-  MOVE_CTX.selectedId = fileRow.folder_id ?? null;
+  MOVE_CTX.file = fileRow; MOVE_CTX.selectedId = fileRow.folder_id ?? null;
   $('move-file').textContent = fileRow.filename;
   const box = $('move-options'); box.innerHTML='';
   state.folders.forEach(f=>{
@@ -265,15 +329,12 @@ async function startTOTPEnroll(){
   try{
     const en = await sb.auth.mfa.enroll({ factorType:'totp' });
     if (en.error) return toast('Enroll error','error',en.error.message);
-    state.mfa.enrolling = en.data;
+    state.mfa.enrolling = en.data; // { id, type, totp: { qr_code, secret, uri } }
     $('totp-enroll').style.display = 'block';
-    const qr = en.data.totp?.qr_code;
-    if (qr) $('totp-qr').src = qr;
+    const qr = en.data.totp?.qr_code; if (qr) $('totp-qr').src = qr;
     $('totp-secret').value = en.data.totp?.secret || '';
     $('totp-status').textContent = 'Scan the QR or enter the secret, then enter the 6-digit code.';
-  }catch(e){
-    toast('Enroll crashed','error', e.message||'Unknown');
-  }
+  }catch(e){ toast('Enroll crashed','error', e.message||'Unknown'); }
 }
 async function verifyTOTPEnroll(){
   const code = $('totp-code').value.trim();
@@ -282,10 +343,7 @@ async function verifyTOTPEnroll(){
   if (!factorId) return toast('Missing enrollment','error');
   const vr = await sb.auth.mfa.verify({ factorId, code });
   if (vr.error) return toast('Verify error','error',vr.error.message);
-  toast('2FA enabled','success');
-  $('totp-code').value = '';
-  state.mfa.enrolling = null;
-  await refreshTOTPStatus();
+  toast('2FA enabled','success'); $('totp-code').value = ''; state.mfa.enrolling = null; await refreshTOTPStatus();
 }
 async function disableTOTP(){
   if (!confirm('Turn OFF 2FA for this account?')) return;
@@ -298,20 +356,17 @@ async function disableTOTP(){
         if (un.error) return toast('Disable error','error',un.error.message);
       }
     }
-    toast('2FA disabled','success');
-    await refreshTOTPStatus();
-  }catch(e){
-    toast('Disable crashed','error', e.message||'Unknown');
-  }
+    toast('2FA disabled','success'); await refreshTOTPStatus();
+  }catch(e){ toast('Disable crashed','error', e.message||'Unknown'); }
 }
 
 /* ===== Wire UI ===== */
 function wire(){
-  // Theme buttons
+  // Theme
   $('btn-theme')?.addEventListener('click', toggleTheme);
   $('btn-theme-auth')?.addEventListener('click', toggleTheme);
 
-  // Email/Password + OAuth
+  // Auth
   $('btn-signin')?.addEventListener('click',signIn);
   $('btn-signup')?.addEventListener('click',signUp);
   $('btn-signout')?.addEventListener('click',signOut);
@@ -330,12 +385,11 @@ function wire(){
   $('btn-folder-rename')?.addEventListener('click',renameFolder);
   $('btn-folder-delete')?.addEventListener('click',deleteFolder);
 
-  // Profile + TOTP
+  // Profile
   $('btn-save-profile')?.addEventListener('click',saveProfile);
   $('btn-back')?.addEventListener('click',showApp);
-  initTOTPUI();
 
-  // Upload dropzone
+  // Upload
   const drop=$('drop-area');
   drop?.addEventListener('click',()=>$('fileElem').click());
   drop?.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();});
@@ -358,52 +412,21 @@ async function saveProfile(){ const {data:{user}}=await sb.auth.getUser(); if(!u
   const {error}=await sb.from('profiles').upsert(updates,{onConflict:'id'}); if(error) return toast('Save profile error','error',error.message);
   toast('Profile saved','success'); showApp();
 }
+
 /*************************************************
- * STREAMBOX – PWA install + SW register + theme-color sync
+ * PWA – register SW + Install buttons (relative path)
  *************************************************/
 (function PWASetup(){
   // Register SW
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 
-  // Create install buttons if they don't exist
-  function ensureInstallButtons(){
-    // Dashboard topbar
-    let topbarInstall = document.getElementById('btn-install');
-    if (!topbarInstall) {
-      const actions = document.querySelector('.topbar .actions');
-      if (actions) {
-        topbarInstall = document.createElement('button');
-        topbarInstall.id = 'btn-install';
-        topbarInstall.type = 'button';
-        topbarInstall.textContent = 'Install';
-        actions.insertBefore(topbarInstall, actions.firstChild); // put near left of actions
-      }
-    }
-    // Auth header
-    let authInstall = document.getElementById('btn-install-auth');
-    if (!authInstall) {
-      const brand = document.querySelector('#auth-box .brand');
-      if (brand) {
-        authInstall = document.createElement('button');
-        authInstall.id = 'btn-install-auth';
-        authInstall.type = 'button';
-        authInstall.textContent = 'Install';
-        brand.appendChild(authInstall);
-      }
-    }
-  }
-  ensureInstallButtons();
-
-  // Handle beforeinstallprompt
+  // beforeinstallprompt → show Install buttons
   let deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    // Show buttons
-    const b1 = document.getElementById('btn-install');
-    const b2 = document.getElementById('btn-install-auth');
+    e.preventDefault(); deferredPrompt = e;
+    const b1 = $('btn-install'); const b2 = $('btn-install-auth');
     [b1,b2].forEach((btn)=>{
       if (!btn) return;
       btn.style.display = 'inline-block';
@@ -412,27 +435,20 @@ async function saveProfile(){ const {data:{user}}=await sb.auth.getUser(); if(!u
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         deferredPrompt = null;
-        if (typeof toast === 'function') {
-          toast(outcome === 'accepted' ? 'Installing…' : 'Install dismissed', 'info');
-        }
+        toast(outcome === 'accepted' ? 'Installing…' : 'Install dismissed', 'info');
       };
     });
   });
 
-  // Hide install buttons if app is already installed
+  // Hide Install buttons if already installed
   function hideInstallIfStandalone(){
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (isStandalone) {
-      const b1 = document.getElementById('btn-install');
-      const b2 = document.getElementById('btn-install-auth');
-      if (b1) b1.style.display = 'none';
-      if (b2) b2.style.display = 'none';
-    }
+    if (isStandalone) { const b1=$('btn-install'); const b2=$('btn-install-auth'); if(b1) b1.style.display='none'; if(b2) b2.style.display='none'; }
   }
   hideInstallIfStandalone();
   window.matchMedia('(display-mode: standalone)').addEventListener?.('change', hideInstallIfStandalone);
 
-  // Keep <meta name="theme-color"> in sync with current theme
+  // Keep meta theme-color synced with theme
   function setThemeColor(){
     const meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) return;
@@ -442,13 +458,8 @@ async function saveProfile(){ const {data:{user}}=await sb.auth.getUser(); if(!u
     meta.setAttribute('content', dark ? '#0c0d11' : '#f6f7fb');
   }
   setThemeColor();
-
-  // If your toggleTheme is defined above, wrap it to also update the theme-color meta
   if (typeof window.toggleTheme === 'function') {
     const _origToggle = window.toggleTheme;
-    window.toggleTheme = function(){
-      _origToggle();
-      setThemeColor();
-    };
+    window.toggleTheme = function(){ _origToggle(); setThemeColor(); };
   }
 })();

@@ -8,12 +8,13 @@
   <!-- Supabase SDK v2 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
-  <!-- Your redesigned CSS -->
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/icons/streambox-192.png">
-<meta name="theme-color" content="#f6f7fb">
+  <!-- Styles -->
+  <link rel="stylesheet" href="./style.css">
 
+  <!-- PWA (relative paths for GitHub Pages) -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/streambox-192.png">
+  <meta name="theme-color" content="#f6f7fb">
 </head>
 <body>
 
@@ -25,7 +26,10 @@
           <div class="logo-dot"></div>
           <h1>StreamBox</h1>
         </div>
-        <button id="btn-theme-auth" type="button" title="Toggle theme">Theme</button>
+        <div class="row">
+          <button id="btn-install-auth" type="button" style="display:none">Install</button>
+          <button id="btn-theme-auth" type="button" title="Toggle theme">Theme</button>
+        </div>
       </div>
       <div class="sub muted">Private archive. Secure access only.</div>
 
@@ -57,6 +61,7 @@
     <div class="card topbar">
       <div><strong>StreamBox</strong> — <span id="user-email"></span></div>
       <div class="actions row">
+        <button id="btn-install" type="button" style="display:none">Install</button>
         <button id="btn-files" type="button">Files</button>
         <button id="btn-trash" type="button">Trash</button>
         <button id="btn-cards" type="button">Cards</button>
@@ -159,6 +164,6 @@
   <!-- toasts -->
   <div id="toasts"></div>
 
-  <script src="script.js"></script>
+  <script src="./script.js"></script>
 </body>
 </html>

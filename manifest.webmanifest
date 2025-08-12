@@ -2,24 +2,14 @@
   "name": "StreamBox",
   "short_name": "StreamBox",
   "description": "Private archive. Secure, elegant, and fast.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f6f7fb",
   "theme_color": "#f6f7fb",
   "icons": [
-    {
-      "src": "/icons/streambox-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/streambox-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    }
+    { "src": "icons/streambox-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable any" },
+    { "src": "icons/streambox-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" }
   ]
 }
