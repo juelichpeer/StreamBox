@@ -1,5 +1,5 @@
 /***** MAIN: wiring + views *****/
-import { $, state, applySavedTheme, toggleTheme } from './config.js';
+import { sb, $, state, applySavedTheme, toggleTheme } from './config.js';
 import { signIn, signUp, signOut, oauth } from './auth.js';
 import { loadFolders, newFolder, renameFolder, deleteFolder } from './folders.js';
 import { listFiles, handleFiles } from './files.js';
@@ -23,6 +23,17 @@ export function initAppOnce(){
   initTOTPUI();
   refreshTOTPStatus();
 }
+
+/* === MOVE AUTH STATE WATCHER HERE === */
+sb.auth.onAuthStateChange((_e,session)=>{
+  const logged = !!session?.user;
+  $('user-email').textContent = logged ? (session.user.email||'') : '';
+  if (logged) initAppOnce(); else showAuth();
+});
+sb.auth.getUser().then(({data})=>{
+  if (data?.user) { $('user-email').textContent = data.user.email||''; initAppOnce(); }
+  else { showAuth(); }
+});
 
 (function wire(){
   // theme

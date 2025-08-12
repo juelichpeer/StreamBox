@@ -1,6 +1,5 @@
 /***** AUTH *****/
-import { sb, $, toast, applySavedTheme } from './config.js';
-import { initAppOnce, showAuth, showApp } from './main.js';
+import { sb, $, toast } from './config.js';
 
 export async function signUp(){
   const email=$('email')?.value?.trim(), pw=$('password')?.value||'';
@@ -25,7 +24,7 @@ export async function signIn(){
       const ch = await sb.auth.mfa.challenge({ factorId: totp.id });
       if (ch.error) return toast('MFA challenge error','error', ch.error.message);
       const code = prompt('Enter 6-digit code from your authenticator app:');
-      if (code === null || !code.trim()) return toast('MFA canceled','info');
+      if (!code?.trim()) return toast('MFA canceled','info');
       const ver = await sb.auth.mfa.verify({ factorId: totp.id, code: code.trim(), challengeId: ch.data.id });
       if (ver.error) return toast('MFA verify error','error', ver.error.message);
       toast('MFA success','success'); return;
@@ -34,20 +33,13 @@ export async function signIn(){
   if (error) return toast('Login failed','error',error.message);
 }
 
-export async function signOut(){ await sb.auth.signOut(); toast('Signed out','info'); }
+export async function signOut(){
+  await sb.auth.signOut();
+  toast('Signed out','info');
+}
 
 export async function oauth(provider){
   const redirectTo = window.location.origin + (window.location.pathname || '');
   const { error } = await sb.auth.signInWithOAuth({ provider, options:{ redirectTo } });
   if (error) toast('OAuth error','error',error.message); else toast('Redirecting…','info');
 }
-
-/* session watcher */
-sb.auth.onAuthStateChange((_e,session)=>{
-  const logged=!!session?.user;
-  $('user-email').textContent = logged ? (session.user.email||'') : '';
-  if(logged) initAppOnce(); else showAuth();
-});
-sb.auth.getUser().then(({data})=>{
-  if(data?.user){ $('user-email').textContent=data.user.email||''; applySavedTheme(); initAppOnce(); }
-});
