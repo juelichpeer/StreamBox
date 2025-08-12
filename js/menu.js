@@ -1,8 +1,14 @@
-/***** CONTEXT MENU (3-dots) *****/
+/***** CONTEXT MENU (files + folders unified) *****/
 import { toast } from './config.js';
 import { renameFile, openMoveModal, moveToTrash, restoreFile, deleteForever } from './files.js';
+import { openFolder, renameFolderById, deleteFolderById } from './folders.js';
 
-export function openMenu(ev, f, url) {
+/**
+ * openMenu(ev, item, url?)
+ * - Files: pass the file row as `item` (has id, filename, deleted_at, etc.)
+ * - Folders: pass an object { _type:'folder', id, name }
+ */
+export function openMenu(ev, item, url) {
   // cleanup
   document.querySelectorAll('.menu, .menu-overlay').forEach(n => n.remove());
 
@@ -25,20 +31,29 @@ export function openMenu(ev, f, url) {
     m.appendChild(b);
   };
 
-  if (!f.deleted_at) {
-    add('Open', () => { if (url) window.open(url, '_blank'); else toast('No preview', 'info'); });
-    add('Download', () => {
-      if (!url) return;
-      const a = document.createElement('a');
-      a.href = url; a.download = f.filename;
-      document.body.appendChild(a); a.click(); a.remove();
-    });
-    add('Rename', () => renameFile(f));
-    add('Move to…', () => openMoveModal(f));
-    add('Move to Trash', () => moveToTrash(f));
-  } else {
-    add('Restore', () => restoreFile(f));
-    add('Delete Forever', () => deleteForever(f));
+  // Folder menu
+  if (item && item._type === 'folder') {
+    add('Open', () => openFolder({ id: item.id, name: item.name }));
+    add('Rename', () => renameFolderById(item));
+    add('Delete', () => deleteFolderById(item));
+  }
+  // File menu
+  else {
+    if (!item.deleted_at) {
+      add('Open', () => { if (url) window.open(url, '_blank'); else toast('No preview', 'info'); });
+      add('Download', () => {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url; a.download = item.filename;
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+      add('Rename', () => renameFile(item));
+      add('Move to…', () => openMoveModal(item));
+      add('Move to Trash', () => moveToTrash(item));
+    } else {
+      add('Restore', () => restoreFile(item));
+      add('Delete Forever', () => deleteForever(item));
+    }
   }
 
   document.body.appendChild(m);

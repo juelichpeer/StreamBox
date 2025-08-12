@@ -7,3 +7,20 @@
   background:color-mix(in oklab, var(--card), transparent 30%);
 }
 #folder-list li.active{ outline:3px solid color-mix(in oklab, var(--brand), transparent 60%) }
+/* folder list items with kebab, matching file menu style */
+.folder-item{
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.folder-item .folder-name{ flex:1; }
+.folder-item .kebab{
+  position: static;   /* keep inside the row */
+  margin-left: 6px;
+  width: 32px; height: 32px; border-radius: 10px;
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.folder-item .kebab::before{ content:"⋮"; font-size:18px; }
