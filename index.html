@@ -8,15 +8,14 @@
   <!-- Supabase SDK v2 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
+  <!-- PWA + Icons -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/icons/streambox-192.png">
+  <meta name="theme-color" content="#0c0d11">
+
   <!-- Styles -->
   <link rel="stylesheet" href="style.css">
-
-  <!-- PWA (relative paths for GitHub Pages) -->
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icons/streambox-192.png">
-  <meta name="theme-color" content="#f6f7fb">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-
 </head>
 <body>
 
@@ -28,10 +27,7 @@
           <div class="logo-dot"></div>
           <h1>StreamBox</h1>
         </div>
-        <div class="row">
-          <button id="btn-install-auth" type="button" style="display:none">Install</button>
-          <button id="btn-theme-auth" type="button" title="Toggle theme">Theme</button>
-        </div>
+        <button id="btn-theme-auth" type="button" title="Toggle theme">Theme</button>
       </div>
       <div class="sub muted">Private archive. Secure access only.</div>
 
@@ -58,73 +54,111 @@
     </div>
   </div>
 
-<!-- DASHBOARD (home) -->
-<div id="home-box" class="shell" style="display:none">
-  <div class="card topbar">
-    <div><strong>StreamBox</strong> — <span id="user-email-home"></span></div>
-    <div class="actions row">
-      <button id="nav-dashboard" class="primary" type="button">Dashboard</button>
-      <button id="nav-files" type="button">Files</button>
-      <button id="nav-share" type="button">Share</button>
-      <button id="nav-chat" type="button">Chat</button>
-      <button id="nav-public" type="button">Public</button>
-      <button id="btn-profile" type="button">Profile</button>
-      <button id="btn-theme" type="button">Theme</button>
-      <button id="btn-signout" type="button">Sign Out</button>
+  <!-- DASHBOARD (home) -->
+  <div id="home-box" class="shell" style="display:none">
+    <div class="card topbar">
+      <div class="brandline">
+        <div class="left">
+          <div class="logo-dot"></div>
+          <strong>StreamBox</strong> — <span id="user-email-home"></span>
+        </div>
+        <div class="actions row">
+          <button id="nav-dashboard" class="primary" type="button">Dashboard</button>
+          <button id="nav-files" type="button">Files</button>
+          <button id="nav-share" type="button">Share</button>
+          <button id="nav-chat" type="button">Chat</button>
+          <button id="nav-public" type="button">Public</button>
+          <button id="btn-profile" type="button">Profile</button>
+          <button id="btn-theme" type="button" title="Toggle theme">Theme</button>
+          <button id="btn-signout" type="button">Sign Out</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="hero card">
+      <div>
+        <h2>Welcome back</h2>
+        <p class="muted">Quick actions and a snapshot of your space.</p>
+      </div>
+      <div class="hero-actions">
+        <button id="quick-upload-btn" class="primary" type="button">Upload files</button>
+        <button id="nav-files-cta" type="button" onclick="document.getElementById('nav-files').click()">Open Files</button>
+      </div>
+    </section>
+
+    <div class="dash-grid">
+      <section class="card widget">
+        <header><h3>Quick Upload</h3></header>
+        <div id="quick-drop" class="drop small">
+          <p>Drop files here or <a href="#" onclick="document.getElementById('quick-file').click();return false;">choose</a></p>
+          <input id="quick-file" type="file" multiple hidden>
+        </div>
+        <small class="muted">Goes to the currently selected folder in Files.</small>
+      </section>
+
+      <section class="card widget">
+        <header class="row between">
+          <h3>Recent</h3>
+          <button type="button" class="ghost" onclick="document.getElementById('nav-files').click()">View all</button>
+        </header>
+        <ul id="recent-list" class="list recent"></ul>
+      </section>
+
+      <section class="card widget">
+        <header><h3>Secret Vault</h3></header>
+        <p class="muted">Protected area (Face/Touch ID).</p>
+        <button id="vault-unlock" type="button">Unlock</button>
+        <div id="vault-state" class="muted" style="margin-top:8px">Locked</div>
+      </section>
+
+      <section class="card widget wide">
+        <header class="row between">
+          <h3>Share Links</h3>
+          <button id="share-create" type="button" class="ghost">Create share</button>
+        </header>
+        <ul id="share-list" class="list shares">
+          <li class="muted">No shares yet.</li>
+        </ul>
+      </section>
+
+      <section class="card widget">
+        <header class="row between">
+          <h3>Friends</h3>
+          <button id="friends-find" type="button" class="ghost">Find</button>
+        </header>
+        <ul id="friends-list" class="list friends">
+          <li class="muted">No friends yet.</li>
+        </ul>
+      </section>
+
+      <section class="card widget wide">
+        <header class="row between">
+          <h3>Announcements</h3>
+          <button id="public-new" type="button" class="ghost">New post</button>
+        </header>
+        <ul id="public-feed" class="list feed">
+          <li class="muted">Nothing here yet.</li>
+        </ul>
+      </section>
     </div>
   </div>
 
-  <div class="dash-grid">
-    <!-- Quick Upload -->
-    <section class="card widget">
-      <header><h3>Quick Upload</h3></header>
-      <div id="quick-drop" class="drop small">
-        <p>Drop files here or <a href="#" onclick="document.getElementById('quick-file').click();return false;">choose</a></p>
-        <input id="quick-file" type="file" multiple hidden>
+  <!-- FILES PAGE -->
+  <div id="app-box" class="shell" style="display:none">
+    <div class="card topbar">
+      <div><strong>StreamBox</strong> — <span id="user-email"></span></div>
+      <div class="actions row">
+        <button id="btn-files" type="button">Files</button>
+        <button id="btn-trash" type="button">Trash</button>
+        <button id="btn-cards" type="button">Cards</button>
+        <button id="btn-rows" type="button">Rows</button>
+        <button id="btn-profile" type="button">Profile</button>
+        <button id="btn-theme" type="button" title="Toggle theme">Theme</button>
+        <button id="btn-signout" type="button">Sign Out</button>
       </div>
-      <button id="quick-upload-btn" class="primary" type="button">Upload</button>
-    </section>
-
-    <!-- Recent Activity -->
-    <section class="card widget">
-      <header><h3>Recent</h3></header>
-      <ul id="recent-list" class="recent"></ul>
-    </section>
-
-    <!-- Secret Vault -->
-    <section class="card widget">
-      <header><h3>Secret Vault</h3></header>
-      <p class="muted">Biometric unlock required.</p>
-      <button id="vault-unlock" type="button">Unlock with Face/Touch ID</button>
-      <div id="vault-state" class="muted" style="margin-top:8px">Locked</div>
-    </section>
-
-    <!-- Shares -->
-    <section class="card widget">
-      <header><h3>Shares</h3></header>
-      <ul id="share-list" class="shares"></ul>
-      <button id="share-create" type="button">Create share</button>
-    </section>
-
-    <!-- Friends -->
-    <section class="card widget">
-      <header><h3>Friends</h3></header>
-      <ul id="friends-list" class="friends"></ul>
-      <button id="friends-find" type="button">Find friends</button>
-    </section>
-
-    <!-- Announcements -->
-    <section class="card widget wide">
-      <header><h3>Announcements</h3></header>
-      <ul id="public-feed" class="feed"></ul>
-      <button id="public-new" type="button">New post</button>
-    </section>
-  </div>
-</div>
-
+    </div>
 
     <div class="dash">
-      <!-- FOLDERS -->
       <aside class="card folders">
         <div class="folders-head">
           <h3>Folders</h3>
@@ -137,7 +171,6 @@
         <ul id="folder-list"></ul>
       </aside>
 
-      <!-- MAIN -->
       <div class="card main">
         <div id="drop-area" class="drop">
           <p>Drag & drop files here or
@@ -212,9 +245,10 @@
     </div>
   </div>
 
-  <!-- toasts -->
+  <!-- TOASTS -->
   <div id="toasts"></div>
 
+  <!-- JS (module entry) -->
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>
