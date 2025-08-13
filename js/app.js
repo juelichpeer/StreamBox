@@ -1,4 +1,4 @@
-/* StreamBox Nova — Global Search + Time-limited Share Links */
+/* StreamBox Nova — Global Search + Revocable Share Links */
 
 const SUPABASE_URL = "https://kulgncyhgksjdvprgfdy.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGduY3loZ2tzamR2cHJnZmR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5OTA1ODQsImV4cCI6MjA3MDU2NjU4NH0.XA6R7qZDO1jypaCEeIfGJKo8DmUdpxcYBnB0Ih3K8ms";
@@ -55,7 +55,7 @@ const isImg=e=>['png','jpg','jpeg','webp','gif','avif'].includes(e);
 let state = { layout:'grid', tab:'files', folder:null, folders:[], search:null };
 
 async function loadFolders(){
-  const { data, error } = await sb.from('folders').select('*').order('created_at',{ascending:true});
+  const { data } = await sb.from('folders').select('*').order('created_at',{ascending:true});
   state.folders = [{id:null,name:'All Files'}, ...(data||[])];
   renderFolders();
 }
@@ -159,37 +159,43 @@ async function listFiles(){
   renderFolders();
 }
 
-/* ===== Share links ===== */
-async function shareLink(fileRow){
-  if (fileRow.deleted_at) return toast('Restore file before sharing','info');
+/* ===== Share links (revocable) ===== */
+async function shareLinkCreate(f){
+  if (f.deleted_at) return toast('Restore file before sharing','info');
 
-  // Ask expiry (minutes). Clamp 1..10080 (7 days).
-  let mins = prompt('Link expires in minutes (default 60):', '60');
-  if (mins === null) return; // cancelled
-  mins = parseInt(mins, 10);
-  if (Number.isNaN(mins) || mins < 1) mins = 60;
-  if (mins > 10080) mins = 10080;
+  let mins = prompt('Link expires in minutes (default 60):','60');
+  if (mins===null) return;
+  mins = parseInt(mins,10); if(isNaN(mins)||mins<1) mins=60; if(mins>10080) mins=10080;
 
-  const sec = mins * 60;
-  const res = await sb.storage.from('user-files').createSignedUrl(fileRow.filepath, sec);
-  if (res.error) return toast('Share link error','error',res.error.message);
-
-  const url = res.data?.signedUrl;
-  if (!url) return toast('Share link error','error','No URL returned');
-
-  // Try copy to clipboard
-  try{
-    await navigator.clipboard.writeText(url);
-    const short = url.length>64 ? (url.slice(0,64)+'…') : url;
-    toast('Share link copied','success', short);
-  }catch{
-    // Fallback: show it so the user can copy
-    alert('Share URL:\n\n' + url);
-    toast('Share link ready','success');
+  const restrict = confirm('Restrict to specific emails? OK = Yes, Cancel = Public');
+  let emails = [];
+  if (restrict) {
+    const raw = prompt('Enter allowed emails, comma-separated:', '');
+    if (raw===null) return;
+    emails = raw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+    if (emails.length===0) { alert('No emails entered, making it public instead.'); }
   }
+
+  const { data: sess } = await sb.auth.getSession(); const user = sess?.session?.user; if(!user) return toast('Not logged in','error');
+  const token = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + mins*60*1000).toISOString();
+
+  const ins = await sb.from('shares').insert([{
+    token,
+    file_id: f.id,
+    owner_id: user.id,
+    restricted: restrict && emails.length>0,
+    allow_emails: restrict && emails.length>0 ? emails : null,
+    expires_at: expiresAt
+  }]).select().single();
+
+  if (ins.error) return toast('Share create error','error',ins.error.message);
+
+  const appUrl = `${location.origin}/share.html#${token}`;
+  try { await navigator.clipboard.writeText(appUrl); toast('Share created (copied)','success', appUrl); }
+  catch { alert('Share URL:\n\n'+appUrl); toast('Share created','success'); }
 }
 
-/* context menu */
 function openMenu(ev,f,url){
   document.querySelectorAll('.menu').forEach(m=>m.remove());
   const m=document.createElement('div'); m.className='menu'; m.addEventListener('click',e=>e.stopPropagation());
@@ -197,7 +203,7 @@ function openMenu(ev,f,url){
   if(!f.deleted_at){
     add('Open', ()=>{ if(url) window.open(url,'_blank'); else toast('No preview','info'); });
     add('Download', ()=>{ if(!url) return; const a=document.createElement('a'); a.href=url; a.download=f.filename; a.click(); });
-    add('Share link…', ()=> shareLink(f));                 // ← NEW
+    add('Share link…', ()=>shareLinkCreate(f));
     add('Move to Trash', ()=> moveToTrash(f));
   } else {
     add('Restore', ()=> restoreFile(f));
@@ -281,42 +287,35 @@ window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferr
 function initOnce(){
   if(INIT) return; INIT=true; applyTheme();
 
-  // Auth buttons
   $('btn-signin').onclick=signIn; $('btn-signup').onclick=signUp; $('btn-signout').onclick=signOut;
   $('btn-apple').onclick=()=>oauth('apple'); $('btn-google').onclick=()=>oauth('google');
   $('btn-theme').onclick=toggleTheme;
 
-  // Nav
   $('nav-files').onclick=()=>{ show('files'); listFiles(); };
   $('nav-home').onclick=()=>{ show('home'); recent(); };
   $('btn-profile').onclick=()=>{ show('profile'); };
   $('back-home').onclick=()=>{ show('home'); };
 
-  // Files controls
   $('btn-cards').onclick=()=>{ state.layout='grid'; listFiles(); };
   $('btn-rows').onclick=()=>{ state.layout='row'; listFiles(); };
   $('btn-trash').onclick=()=>{ state.tab = (state.tab==='files'?'trash':'files'); listFiles(); };
 
-  // Folders
   $('btn-folder-new').onclick=newFolder;
   $('btn-folder-rename').onclick=renameFolder;
   $('btn-folder-del').onclick=deleteFolder;
 
-  // Uploads
   const browse=$('browse'), fi=$('file-input'), drop=$('drop');
   browse.onclick=(e)=>{ e.preventDefault(); fi.click(); };
   fi.onchange=(e)=> handleFiles(e.target.files);
   drop.addEventListener('dragover',e=>{ e.preventDefault(); });
   drop.addEventListener('drop',e=>{ e.preventDefault(); handleFiles(e.dataTransfer.files); });
 
-  // Quick upload
   const qb=$('quick-browse'), qi=$('quick-input'), qd=$('quick');
   qb.onclick=(e)=>{ e.preventDefault(); qi.click(); };
   qi.onchange=(e)=> handleFiles(e.target.files);
   qd.addEventListener('dragover',e=>{ e.preventDefault(); });
   qd.addEventListener('drop',e=>{ e.preventDefault(); handleFiles(e.dataTransfer.files); });
 
-  // SEARCH (Enter to search, Esc to clear)
   const search=$('search');
   if(search){
     let lastTerm='';
