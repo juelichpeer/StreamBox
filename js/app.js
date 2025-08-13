@@ -1,4 +1,4 @@
-/* StreamBox Nova — with Global Search (Enter to search) */
+/* StreamBox Nova — Global Search + Time-limited Share Links */
 
 const SUPABASE_URL = "https://kulgncyhgksjdvprgfdy.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGduY3loZ2tzamR2cHJnZmR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5OTA1ODQsImV4cCI6MjA3MDU2NjU4NH0.XA6R7qZDO1jypaCEeIfGJKo8DmUdpxcYBnB0Ih3K8ms";
@@ -109,18 +109,15 @@ async function handleFiles(fileList){
   await refresh();
 }
 
-/* ===== Global search ===== */
+/* ===== Global search + listing ===== */
 async function listFiles(){
   const list = $('list'); if(!list) return;
   list.className = state.layout==='grid' ? 'grid' : 'row';
   list.innerHTML='';
 
   let q = sb.from('files').select('*').order('created_at',{ascending:false});
-  // tab
   q = state.tab==='files' ? q.is('deleted_at',null) : q.not('deleted_at','is',null);
-  // folder
   if(state.folder?.id) q = q.eq('folder_id',state.folder.id);
-  // search
   if (state.search && state.search.trim().length >= 2){
     q = q.ilike('filename', `%${state.search.trim()}%`);
   }
@@ -162,6 +159,36 @@ async function listFiles(){
   renderFolders();
 }
 
+/* ===== Share links ===== */
+async function shareLink(fileRow){
+  if (fileRow.deleted_at) return toast('Restore file before sharing','info');
+
+  // Ask expiry (minutes). Clamp 1..10080 (7 days).
+  let mins = prompt('Link expires in minutes (default 60):', '60');
+  if (mins === null) return; // cancelled
+  mins = parseInt(mins, 10);
+  if (Number.isNaN(mins) || mins < 1) mins = 60;
+  if (mins > 10080) mins = 10080;
+
+  const sec = mins * 60;
+  const res = await sb.storage.from('user-files').createSignedUrl(fileRow.filepath, sec);
+  if (res.error) return toast('Share link error','error',res.error.message);
+
+  const url = res.data?.signedUrl;
+  if (!url) return toast('Share link error','error','No URL returned');
+
+  // Try copy to clipboard
+  try{
+    await navigator.clipboard.writeText(url);
+    const short = url.length>64 ? (url.slice(0,64)+'…') : url;
+    toast('Share link copied','success', short);
+  }catch{
+    // Fallback: show it so the user can copy
+    alert('Share URL:\n\n' + url);
+    toast('Share link ready','success');
+  }
+}
+
 /* context menu */
 function openMenu(ev,f,url){
   document.querySelectorAll('.menu').forEach(m=>m.remove());
@@ -170,6 +197,7 @@ function openMenu(ev,f,url){
   if(!f.deleted_at){
     add('Open', ()=>{ if(url) window.open(url,'_blank'); else toast('No preview','info'); });
     add('Download', ()=>{ if(!url) return; const a=document.createElement('a'); a.href=url; a.download=f.filename; a.click(); });
+    add('Share link…', ()=> shareLink(f));                 // ← NEW
     add('Move to Trash', ()=> moveToTrash(f));
   } else {
     add('Restore', ()=> restoreFile(f));
