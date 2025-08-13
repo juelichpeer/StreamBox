@@ -1,24 +1,89 @@
-/* ===== Dashboard (StreamBox) ===== */
-.brandline{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brandline .left{display:flex;align-items:center;gap:10px}
+/* ===== StreamBox – Futuristic Dashboard ===== */
 
+/* animated gradient glass background */
+.glass-bg{
+  position:fixed; inset:-20%;
+  background: radial-gradient(60% 40% at 10% 10%, rgba(60,120,255,.16), transparent 50%),
+              radial-gradient(50% 35% at 90% 20%, rgba(180,80,255,.14), transparent 55%),
+              radial-gradient(40% 50% at 30% 90%, rgba(255,180,60,.10), transparent 60%);
+  filter: blur(50px);
+  z-index: -1;
+  animation: drift 20s ease-in-out infinite alternate;
+}
+@keyframes drift {
+  0%{ transform: translate3d(0,0,0) scale(1); }
+  100%{ transform: translate3d(-3%,2%,0) scale(1.02); }
+}
+
+/* layout: sidebar / main / right */
+#home-box{
+  display:grid;
+  grid-template-columns: 230px 1fr 300px;
+  gap:18px;
+  padding:18px;
+}
+@media (max-width: 1100px){
+  #home-box{ grid-template-columns: 200px 1fr; }
+  .sb-right{ display:none; }
+}
+@media (max-width: 780px){
+  #home-box{ grid-template-columns: 1fr; padding:12px; }
+  .sb-sidebar{ position:sticky; top:6px; z-index:10; }
+}
+
+/* cards with glass look */
+.card{
+  background: color-mix(in oklab, var(--card), white 6%);
+  border:1px solid color-mix(in oklab, var(--stroke), transparent 50%);
+  backdrop-filter: blur(10px) saturate(1.05);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+}
+
+/* sidebar */
+.sb-sidebar{ padding:14px; display:flex; flex-direction:column; gap:14px; }
+.sb-brand{ display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px }
+.sb-brand .logo-dot{ width:10px; height:10px; border-radius:50%; background:var(--brand); }
+.sb-nav{ display:flex; flex-direction:column; gap:6px; }
+.sb-nav button{
+  text-align:left; padding:10px 12px; border-radius:12px;
+  background:transparent; border:1px solid transparent; cursor:pointer;
+}
+.sb-nav button:hover{ background: color-mix(in oklab, var(--bg-elev), var(--brand-ghost) 50%); }
+.sb-nav button.active{ background: color-mix(in oklab, var(--bg-elev-strong), var(--brand-ghost) 70%); border-color: var(--stroke); }
+.sb-bottom{ margin-top:auto; display:flex; gap:8px; flex-wrap:wrap }
+
+/* topbar */
+.sb-topbar{
+  padding:12px 14px; display:flex; align-items:center; justify-content:space-between;
+}
+.sb-topbar .left{ display:flex; align-items:center; gap:10px }
+.search{
+  width:min(42vw, 420px); height:40px; padding:0 12px; border-radius:12px;
+  border:1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card), white 4%);
+  color: var(--text);
+}
+
+/* hero */
 .hero{
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
   padding:16px; margin-top:14px;
-  background:linear-gradient(145deg, color-mix(in oklab, var(--card), white 6%), color-mix(in oklab, var(--card), var(--brand-ghost) 8%));
+  background: linear-gradient(145deg, color-mix(in oklab, var(--card), white 6%),
+                                       color-mix(in oklab, var(--card), var(--brand-ghost) 8%));
 }
 .hero h2{ margin:0 }
-.hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+.hero-actions{ display:flex; gap:10px; flex-wrap:wrap }
 
-.dash-grid{
-  margin:16px auto;
-  display:grid;
+/* main grid */
+.sb-main{ min-width:0 }
+.sb-grid{
+  margin:16px 0;
+  display:grid; gap:16px;
   grid-template-columns: repeat(12, 1fr);
-  gap:16px;
 }
 .widget{ padding:14px; grid-column: span 4; }
 .widget.wide{ grid-column: span 8; }
-
 @media (max-width:1100px){
   .widget{ grid-column: span 6; }
   .widget.wide{ grid-column: span 12; }
@@ -26,10 +91,10 @@
 @media (max-width:700px){
   .widget, .widget.wide{ grid-column: span 12; }
 }
-
 .drop.small{ height:120px }
 
-.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+/* lists */
+.list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px }
 .list li{
   border:1px solid var(--stroke);
   background: color-mix(in oklab, var(--card), transparent 30%);
@@ -37,4 +102,29 @@
   display:flex; align-items:center; justify-content:space-between; gap:10px;
 }
 
-.row.between{display:flex;align-items:center;justify-content:space-between}
+.row.between{ display:flex; align-items:center; justify-content:space-between }
+
+/* right column */
+.sb-right{ padding:14px; display:flex; flex-direction:column; gap:14px; }
+.user-card{ display:flex; align-items:center; gap:10px }
+.user-card .avatar{
+  width:42px; height:42px; border-radius:14px;
+  background: linear-gradient(120deg, var(--brand-ghost), transparent);
+  border:1px solid var(--stroke);
+}
+.user-card .meta .u-name{ font-weight:600 }
+.user-card .meta .u-mail{ color:var(--muted); font-size:12px }
+
+.stats{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+.stat{ text-align:center; padding:12px; border-radius:12px; border:1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card), white 4%); }
+.stat-num{ font-size:22px; font-weight:700 }
+
+/* quick actions */
+.quick-actions{ display:flex; flex-direction:column; gap:8px }
+.quick-actions button{ padding:10px 12px; border-radius:12px }
+
+/* keep focus rings subtle */
+button:focus-visible, .search:focus-visible{
+  outline:none; box-shadow:0 0 0 3px color-mix(in oklab, var(--brand), transparent 80%);
+}
