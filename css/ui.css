@@ -85,3 +85,12 @@ input, .search{ height:42px; padding:0 12px; border-radius:12px; border:1px soli
 #toasts{ position:fixed; right:14px; bottom:14px; display:flex; flex-direction:column; gap:8px; z-index:9999 }
 .toast{ min-width:220px; border:1px solid var(--line); border-radius:12px; background: color-mix(in oklab, var(--surface), white 6%); padding:10px 12px; box-shadow:var(--shadow) }
 .toast small{ display:block; color:var(--muted); margin-top:4px }
+/* Truncated filename styling */
+.filename {
+  display: inline-block;
+  max-width: 200px; /* adjust based on your layout */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
