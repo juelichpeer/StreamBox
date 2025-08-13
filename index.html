@@ -1,309 +1,171 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>StreamBox – Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>StreamBox Nova</title>
 
-  <!-- Supabase SDK v2 -->
+  <!-- Supabase SDK -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
-  <!-- PWA + Icons -->
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="64x64" href="/icons/streambox-192.png">
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/ui.css?v=1">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0c0d11">
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="css/streambox-ui.css?v=1">
-
+  <link rel="apple-touch-icon" href="icons/streambox-192.png">
 </head>
-<body class="streambox-root">
+<body class="nova">
+
+  <!-- Ambient background -->
+  <div class="ambient"></div>
 
   <!-- AUTH -->
-  <div class="auth-wrap" id="auth-wrap">
-    <div id="auth-box" class="card auth-card">
-      <div class="brand" style="justify-content:space-between; width:100%;">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="logo-dot"></div>
-          <h1>StreamBox</h1>
-        </div>
-        <button id="btn-theme-auth" type="button" title="Toggle theme">Theme</button>
+  <section id="auth" class="stage show">
+    <div class="panel">
+      <div class="brand">
+        <div class="dot"></div>
+        <h1>StreamBox <span class="tag">Nova</span></h1>
+        <button id="btn-theme" class="ghost small" title="Toggle theme">Theme</button>
       </div>
-      <div class="sub muted">Private archive. Secure access only.</div>
 
-      <div class="auth-row">
+      <p class="muted">Your private archive. Secure. Elegant.</p>
+
+      <div class="inputs">
         <input id="email" type="email" placeholder="Email" autocomplete="username">
         <input id="password" type="password" placeholder="Password" autocomplete="current-password">
       </div>
-      <div class="auth-actions">
-        <button id="btn-signin" class="primary" type="button">Sign In</button>
-        <button id="btn-signup" type="button">Sign Up</button>
+
+      <div class="actions">
+        <button id="btn-signin" class="primary">Sign In</button>
+        <button id="btn-signup">Sign Up</button>
       </div>
 
-      <div class="divider muted">or</div>
+      <div class="or">or</div>
+
       <div class="oauth">
-        <button id="btn-apple" class="btn-apple" type="button" title="Sign in with Apple">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M16.365 1.43c0 1.14-.47 2.23-1.23 3.06-.79.85-2.08 1.5-3.28 1.41-.13-1.11.41-2.27 1.17-3.07.83-.89 2.3-1.54 3.34-1.4zM20.5 17.17c-.64 1.44-1.41 2.86-2.54 4.05-1 .99-2.21 2.02-3.66 1.99-1.24-.03-1.63-.8-3.04-.8s-1.75.78-3.06.83c-1.45.05-2.56-1.07-3.56-2.06-1.94-1.93-3.44-5.44-2.8-8.45.31-1.44 1.18-2.75 2.47-3.55 1.1-.68 2.56-1 3.86-.81 1.01.15 1.95.66 2.63.66.66 0 1.86-.81 3.14-.69 1.07.11 2.07.44 2.92 1.07-1.73 1.15-1.51 3.58.27 4.53.79.42 1.72.51 2.6.27-.14.45-.3.9-.49 1.35z"/></svg>
-          <span>Sign in with Apple</span>
-        </button>
-        <button id="btn-google" class="btn-google" type="button" title="Sign in with Google">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M21.35 11.1H12v2.9h5.32c-.23 1.5-1.75 4.4-5.32 4.4A6.2 6.2 0 0 1 5.8 12a6.2 6.2 0 0 1 6.2-6.4c1.77 0 2.96.75 3.64 1.4l2.48-2.39C16.7 3.2 14.6 2.3 12 2.3 6.97 2.3 2.9 6.37 2.9 11.4S6.97 20.5 12 20.5c7.03 0 8.1-5.93 7.95-9.4z"/></svg>
-          <span>Sign in with Google</span>
-        </button>
+        <button id="btn-apple" class="line"> Sign in with Apple</button>
+        <button id="btn-google" class="line">Sign in with Google</button>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- DASHBOARD (HOME) -->
-  <div id="home-box" class="shell" style="display:none">
-    <div class="glass-bg"></div>
-
-    <!-- Sidebar -->
-    <aside class="sb-sidebar card">
-      <div class="sb-brand">
-        <div class="logo-dot"></div>
-        <span>StreamBox</span>
+  <!-- DASHBOARD -->
+  <section id="home" class="stage">
+    <header class="top">
+      <div class="left">
+        <div class="mark"><div></div></div>
+        <strong>StreamBox Nova</strong>
       </div>
-      <nav class="sb-nav">
-        <button id="nav-dashboard" class="active">Dashboard</button>
-        <button id="nav-files">Files</button>
-        <button id="nav-share">Share</button>
-        <button id="nav-chat">Chat</button>
-        <button id="nav-public">Public</button>
-        <button id="btn-profile">Profile</button>
-      </nav>
-      <div class="sb-bottom">
-        <button id="btn-theme" title="Toggle theme">Theme</button>
-        <button id="btn-signout">Sign Out</button>
+      <div class="mid">
+        <input id="search" class="search" placeholder="Search…">
       </div>
-    </aside>
-
-    <!-- Main Column -->
-    <main class="sb-main">
-      <!-- Topbar (glass) -->
-      <div class="sb-topbar card">
-        <div class="left">
-          <div class="logo-dot"></div>
-          <strong>Welcome</strong> — <span id="user-email-home"></span>
-        </div>
-        <div class="right">
-          <input id="global-search" class="search" placeholder="Search…">
-        </div>
+      <div class="right">
+        <span id="user-email" class="muted"></span>
+        <button id="btn-profile" class="ghost">Profile</button>
+        <button id="btn-signout" class="ghost">Sign out</button>
       </div>
+    </header>
 
-      <!-- Hero -->
+    <main class="grid">
       <section class="hero card">
         <div>
-          <h2>Control Center</h2>
-          <p class="muted">Quick actions and a snapshot of your space.</p>
+          <h2>Welcome back</h2>
+          <p class="muted">Drop anything. We keep it safe.</p>
         </div>
         <div class="hero-actions">
-          <button id="quick-upload-btn" class="primary" type="button">Upload files</button>
-          <button id="btn-upgrade" type="button">Upgrade to Pro</button>
-          <button id="nav-files-cta" type="button" onclick="document.getElementById('nav-files').click()">Open Files</button>
+          <button id="nav-files" class="primary">Open Files</button>
+          <button id="btn-install" class="ghost" style="display:none;">Install App</button>
         </div>
       </section>
 
-      <!-- Grid -->
-      <div class="sb-grid">
-        <!-- Quick Upload -->
-        <section class="card widget">
-          <header><h3>Quick Upload</h3></header>
-          <div id="quick-drop" class="drop small">
-            <p>Drop files here or <a href="#" onclick="document.getElementById('quick-file').click();return false;">choose</a></p>
-            <input id="quick-file" type="file" multiple hidden>
-          </div>
-          <small class="muted">Uploads to the currently selected folder in Files.</small>
-        </section>
+      <section class="card wide">
+        <h3>Quick Upload</h3>
+        <div id="quick" class="drop">
+          <p>Drag & drop here or <a href="#" id="quick-browse">browse</a></p>
+          <input id="quick-input" type="file" multiple hidden>
+        </div>
+      </section>
 
-        <!-- Recent -->
-        <section class="card widget">
-          <header class="row between">
-            <h3>Recent</h3>
-            <button type="button" class="ghost" onclick="document.getElementById('nav-files').click()">View all</button>
-          </header>
-          <ul id="recent-list" class="list recent"></ul>
-        </section>
+      <section class="card">
+        <h3>Recent</h3>
+        <ul id="recent" class="recent"></ul>
+      </section>
 
-        <!-- Vault -->
-        <section class="card widget">
-          <header><h3>Secret Vault</h3></header>
-          <p class="muted">Protected (Face/Touch ID).</p>
-          <button id="vault-unlock" type="button">Unlock</button>
-          <div id="vault-state" class="muted" style="margin-top:8px">Locked</div>
-        </section>
-
-        <!-- Shares -->
-        <section class="card widget wide">
-          <header class="row between">
-            <h3>Share Links</h3>
-            <button id="share-create" type="button" class="ghost">Create share</button>
-          </header>
-          <ul id="share-list" class="list shares">
-            <li class="muted">No shares yet.</li>
-          </ul>
-        </section>
-
-        <!-- Friends -->
-        <section class="card widget">
-          <header class="row between">
-            <h3>Friends</h3>
-            <button id="friends-find" type="button" class="ghost">Find</button>
-          </header>
-          <ul id="friends-list" class="list friends">
-            <li class="muted">No friends yet.</li>
-          </ul>
-        </section>
-
-        <!-- Announcements -->
-        <section class="card widget wide">
-          <header class="row between">
-            <h3>Announcements</h3>
-            <button id="public-new" type="button" class="ghost">New post</button>
-          </header>
-          <ul id="public-feed" class="list feed">
-            <li class="muted">Nothing here yet.</li>
-          </ul>
-        </section>
-      </div>
+      <section class="card">
+        <h3>Status</h3>
+        <div class="stats">
+          <div class="stat"><div class="num" id="stat-files">—</div><div class="lbl">Files</div></div>
+          <div class="stat"><div class="num" id="stat-trash">—</div><div class="lbl">In Trash</div></div>
+        </div>
+      </section>
     </main>
+  </section>
 
-    <!-- Right Column -->
-    <aside class="sb-right card">
-      <div class="user-card">
-        <div class="avatar"></div>
-        <div class="meta">
-          <div class="u-name">You</div>
-          <div class="u-mail" id="user-email-right"></div>
-        </div>
+  <!-- FILES -->
+  <section id="files" class="stage">
+    <header class="top">
+      <div class="left">
+        <button id="nav-home" class="ghost">← Dashboard</button>
+        <strong>Files</strong>
       </div>
-
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-num" id="stat-files">—</div>
-          <div class="stat-label">Files</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num" id="stat-storage">—</div>
-          <div class="stat-label">Storage</div>
-        </div>
+      <div class="right">
+        <button id="btn-cards" class="ghost small">Cards</button>
+        <button id="btn-rows"  class="ghost small">Rows</button>
+        <button id="btn-trash" class="ghost small">Trash</button>
       </div>
+    </header>
 
-      <div class="quick-actions">
-        <button onclick="document.getElementById('nav-files').click()">Go to Files</button>
-        <button id="btn-theme-side">Toggle Theme</button>
-      </div>
-    </aside>
-  </div>
-
-  <!-- FILES PAGE (unchanged functionality) -->
-  <div id="app-box" class="shell" style="display:none">
-    <div class="card topbar">
-      <div><strong>StreamBox</strong> — <span id="user-email"></span></div>
-      <div class="actions row">
-        <button id="btn-files" type="button">Files</button>
-        <button id="btn-trash" type="button">Trash</button>
-        <button id="btn-cards" type="button">Cards</button>
-        <button id="btn-rows" type="button">Rows</button>
-        <button id="btn-profile" type="button">Profile</button>
-        <button id="btn-theme" type="button" title="Toggle theme">Theme</button>
-        <button id="btn-signout" type="button">Sign Out</button>
-      </div>
-    </div>
-
-    <div class="dash">
-      <aside class="card folders">
-        <div class="folders-head">
+    <div class="wrap">
+      <aside class="side card">
+        <div class="row between">
           <h3>Folders</h3>
           <div class="row">
-            <button id="btn-folder-new" type="button">New</button>
-            <button id="btn-folder-rename" type="button">Rename</button>
-            <button id="btn-folder-delete" type="button">Delete</button>
+            <button id="btn-folder-new"    class="ghost small">New</button>
+            <button id="btn-folder-rename" class="ghost small">Rename</button>
+            <button id="btn-folder-del"    class="ghost small">Delete</button>
           </div>
         </div>
-        <ul id="folder-list"></ul>
+        <ul id="folders"></ul>
       </aside>
 
-      <div class="card main">
-        <div id="drop-area" class="drop">
-          <p>Drag & drop files here or
-            <a href="#" onclick="document.getElementById('fileElem').click();return false;">click to upload</a>
-          </p>
-          <input id="fileElem" type="file" multiple hidden onchange="handleFiles(this.files)">
+      <main class="main card">
+        <div id="drop" class="drop small">
+          <p>Drop files here or <a href="#" id="browse">browse</a></p>
+          <input id="file-input" type="file" multiple hidden>
         </div>
 
-        <h3 id="section-title" style="margin:12px 0 4px">Your Files</h3>
-        <ul id="file-list" class="grid"></ul>
+        <h3 id="files-title">Your Files</h3>
+        <ul id="list" class="grid"></ul>
+      </main>
+    </div>
+  </section>
+
+  <!-- PROFILE -->
+  <section id="profile" class="stage">
+    <header class="top">
+      <div class="left">
+        <button id="back-home" class="ghost">← Back</button>
+        <strong>Profile</strong>
+      </div>
+    </header>
+    <div class="panel card" style="max-width:720px;margin:18px auto;">
+      <p>Email: <strong id="p-email"></strong></p>
+      <div class="row" style="margin-top:8px;">
+        <input id="p-name" type="text" placeholder="Full name">
+        <input id="p-bday" type="date">
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button id="p-save" class="primary">Save</button>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- PROFILE (unchanged) -->
-  <div id="profile-box" class="shell" style="display:none">
-    <div class="card" style="max-width:700px;margin:6vh auto;padding:16px">
-      <h2>My Profile</h2>
-      <p>Email: <strong id="profile-email"></strong></p>
-      <div class="row" style="margin-top:8px">
-        <input id="profile-name" type="text" placeholder="Full name">
-        <input id="profile-birthday" type="date">
-      </div>
-      <div class="row" style="margin-top:10px">
-        <button id="btn-save-profile" class="primary" type="button">Save</button>
-        <button id="btn-back" type="button">Back</button>
-      </div>
-
-      <hr style="border-color:#e5e7eb; opacity:.6; margin:18px 0">
-
-      <h3>Two-Factor Authentication (TOTP)</h3>
-      <p class="muted">Use an authenticator app.</p>
-
-      <div id="totp-setup" class="card" style="padding:12px; margin-top:10px;">
-        <div id="totp-status" class="muted">Checking 2FA status…</div>
-        <div id="totp-actions" style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button id="btn-2fa-enable" type="button" class="primary">Enable 2FA</button>
-          <button id="btn-2fa-disable" type="button" style="display:none;">Disable 2FA</button>
-        </div>
-
-        <div id="totp-enroll" style="display:none; margin-top:12px;">
-          <div class="row" style="align-items:flex-start;">
-            <div style="flex:1;">
-              <div class="muted">Scan this in your authenticator app:</div>
-              <img id="totp-qr" alt="TOTP QR" style="margin-top:8px; width:180px; height:180px; border-radius:8px; border:1px solid #e5e7eb; background:#f9fafb; object-fit:contain;">
-            </div>
-            <div style="flex:2;">
-              <div class="muted">Or enter the secret manually:</div>
-              <input id="totp-secret" type="text" readonly style="margin-top:8px; width:100%;">
-              <div class="row" style="margin-top:8px;">
-                <input id="totp-code" type="text" placeholder="6-digit code" inputmode="numeric" pattern="[0-9]*" style="flex:1;">
-                <button id="btn-2fa-verify" type="button" class="primary">Verify</button>
-              </div>
-              <div class="muted" style="margin-top:6px;">After verifying, 2FA is ON.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MOVE MODAL -->
-  <div id="move-overlay" class="overlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="move-title">
-      <h3 id="move-title">Move file</h3>
-      <p id="move-file" class="muted" style="margin:0 0 8px"></p>
-      <div class="list" id="move-options"></div>
-      <div class="actions">
-        <button id="move-cancel" type="button">Cancel</button>
-        <button id="move-confirm" class="primary" type="button">Move</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TOASTS -->
+  <!-- Menus + Toasts -->
   <div id="toasts"></div>
 
-  <!-- JS entry -->
-  <script src="js/app.js"></script>
+  <!-- App JS -->
+  <script src="js/app.js?v=1"></script>
 </body>
 </html>

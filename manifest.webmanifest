@@ -1,15 +1,12 @@
 {
-  "name": "StreamBox",
+  "name": "StreamBox Nova",
   "short_name": "StreamBox",
-  "description": "Private archive. Secure, elegant, and fast.",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#f6f7fb",
-  "theme_color": "#f6f7fb",
+  "background_color": "#0c0d11",
+  "theme_color": "#0c0d11",
   "icons": [
-    { "src": "icons/streambox-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable any" },
-    { "src": "icons/streambox-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" }
+    { "src": "icons/streambox-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/streambox-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
