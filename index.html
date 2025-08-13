@@ -58,21 +58,70 @@
     </div>
   </div>
 
-  <!-- DASHBOARD -->
-  <div id="app-box" class="shell" style="display:none">
-    <div class="card topbar">
-      <div><strong>StreamBox</strong> — <span id="user-email"></span></div>
-      <div class="actions row">
-        <button id="btn-install" type="button" style="display:none">Install</button>
-        <button id="btn-files" type="button">Files</button>
-        <button id="btn-trash" type="button">Trash</button>
-        <button id="btn-cards" type="button">Cards</button>
-        <button id="btn-rows" type="button">Rows</button>
-        <button id="btn-profile" type="button">Profile</button>
-        <button id="btn-theme" type="button" title="Toggle theme">Theme</button>
-        <button id="btn-signout" type="button">Sign Out</button>
-      </div>
+<!-- DASHBOARD (home) -->
+<div id="home-box" class="shell" style="display:none">
+  <div class="card topbar">
+    <div><strong>StreamBox</strong> — <span id="user-email-home"></span></div>
+    <div class="actions row">
+      <button id="nav-dashboard" class="primary" type="button">Dashboard</button>
+      <button id="nav-files" type="button">Files</button>
+      <button id="nav-share" type="button">Share</button>
+      <button id="nav-chat" type="button">Chat</button>
+      <button id="nav-public" type="button">Public</button>
+      <button id="btn-profile" type="button">Profile</button>
+      <button id="btn-theme" type="button">Theme</button>
+      <button id="btn-signout" type="button">Sign Out</button>
     </div>
+  </div>
+
+  <div class="dash-grid">
+    <!-- Quick Upload -->
+    <section class="card widget">
+      <header><h3>Quick Upload</h3></header>
+      <div id="quick-drop" class="drop small">
+        <p>Drop files here or <a href="#" onclick="document.getElementById('quick-file').click();return false;">choose</a></p>
+        <input id="quick-file" type="file" multiple hidden>
+      </div>
+      <button id="quick-upload-btn" class="primary" type="button">Upload</button>
+    </section>
+
+    <!-- Recent Activity -->
+    <section class="card widget">
+      <header><h3>Recent</h3></header>
+      <ul id="recent-list" class="recent"></ul>
+    </section>
+
+    <!-- Secret Vault -->
+    <section class="card widget">
+      <header><h3>Secret Vault</h3></header>
+      <p class="muted">Biometric unlock required.</p>
+      <button id="vault-unlock" type="button">Unlock with Face/Touch ID</button>
+      <div id="vault-state" class="muted" style="margin-top:8px">Locked</div>
+    </section>
+
+    <!-- Shares -->
+    <section class="card widget">
+      <header><h3>Shares</h3></header>
+      <ul id="share-list" class="shares"></ul>
+      <button id="share-create" type="button">Create share</button>
+    </section>
+
+    <!-- Friends -->
+    <section class="card widget">
+      <header><h3>Friends</h3></header>
+      <ul id="friends-list" class="friends"></ul>
+      <button id="friends-find" type="button">Find friends</button>
+    </section>
+
+    <!-- Announcements -->
+    <section class="card widget wide">
+      <header><h3>Announcements</h3></header>
+      <ul id="public-feed" class="feed"></ul>
+      <button id="public-new" type="button">New post</button>
+    </section>
+  </div>
+</div>
+
 
     <div class="dash">
       <!-- FOLDERS -->

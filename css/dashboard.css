@@ -1,0 +1,23 @@
+/* Dashboard grid */
+.dash-grid{
+  margin:16px auto;
+  display:grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap:16px;
+}
+.widget{ padding:14px; grid-column: span 4; }
+.widget.wide{ grid-column: span 8; }
+@media (max-width: 1100px){ .widget{ grid-column: span 6 } .widget.wide{ grid-column: span 12 } }
+@media (max-width: 700px){ .widget, .widget.wide{ grid-column: span 12 } }
+.widget header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px }
+.drop.small{ height:120px }
+
+/* lists */
+.recent, .shares, .friends, .feed{
+  list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;
+}
+.recent li, .shares li, .friends li, .feed li{
+  border:1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card), transparent 30%);
+  border-radius:10px; padding:8px 10px;
+}

@@ -136,3 +136,11 @@ export async function deleteForever(f){
   const del=await sb.from('files').delete().eq('id',f.id); if(del.error) return toast('DB delete error','error',del.error.message);
   toast('Deleted forever','success'); listFiles();
 }
+import { sb } from './config.js';
+export async function fetchRecent(limit=6){
+  const { data, error } = await sb.from('files')
+    .select('id, filename, created_at, deleted_at')
+    .order('created_at',{ascending:false})
+    .limit(limit);
+  return { data: data||[], error };
+}
