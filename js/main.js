@@ -1,6 +1,7 @@
 /***** MAIN: wiring + views (StreamBox) *****/
 import { sb, $, state, applySavedTheme, toggleTheme, toast } from './config.js';
 import { signIn, signUp, signOut, oauth } from './auth.js';
+// These imports must exist; if a file is missing, you’ll see a toast error from config.js
 import { loadFolders, newFolder, renameFolder, deleteFolder } from './folders.js';
 import { listFiles, handleFiles, fetchRecent } from './files.js';
 import { ensureProfile, loadProfile, saveProfile, initTOTPUI, refreshTOTPStatus } from './profile.js';
@@ -15,7 +16,7 @@ export function showAuth(){
   $('app-box').style.display = 'none';
   $('profile-box').style.display = 'none';
 }
-export function showApp(){           // Files page
+export function showFiles(){
   $('auth-wrap').style.display = 'none';
   $('home-box').style.display = 'none';
   $('app-box').style.display = 'block';
@@ -30,7 +31,7 @@ export function showProfile(){
   loadProfile();
   refreshTOTPStatus();
 }
-export function showDashboard(){     // New dashboard
+export function showDashboard(){
   $('auth-wrap').style.display = 'none';
   $('home-box').style.display = 'block';
   $('app-box').style.display = 'none';
@@ -48,28 +49,24 @@ export function initAppOnce(){
   ensureProfile();
   initTOTPUI();
   refreshTOTPStatus();
-  loadFolders();                // used on Files page
+  loadFolders(); // for Files page
 
-  showDashboard();              // default landing
+  showDashboard(); // default landing after login
 }
 
-/* -------- Auth state watcher (must live here) -------- */
+/* -------- Auth state watcher (critical) -------- */
 sb.auth.onAuthStateChange((_e, session) => {
   const logged = !!session?.user;
   $('user-email').textContent = logged ? (session.user.email || '') : '';
   if (logged) initAppOnce(); else showAuth();
 });
 sb.auth.getUser().then(({ data }) => {
-  if (data?.user) {
-    $('user-email').textContent = data.user.email || '';
-    initAppOnce();
-  } else {
-    showAuth();
-  }
+  if (data?.user) { $('user-email').textContent = data.user.email || ''; initAppOnce(); }
+  else { showAuth(); }
 });
 
 /* -------- Wire UI -------- */
-(function wire(){
+function wire(){
   // Theme
   $('btn-theme')?.addEventListener('click', toggleTheme);
   $('btn-theme-auth')?.addEventListener('click', toggleTheme);
@@ -83,19 +80,19 @@ sb.auth.getUser().then(({ data }) => {
 
   // Main nav
   $('nav-dashboard')?.addEventListener('click', showDashboard);
-  $('nav-files')?.addEventListener('click', showApp);
+  $('nav-files')?.addEventListener('click', showFiles);
   $('nav-share')?.addEventListener('click', () => toast('Share page coming soon','info'));
   $('nav-chat') ?.addEventListener('click', () => toast('Chat coming soon','info'));
   $('nav-public')?.addEventListener('click', () => toast('Public feed coming soon','info'));
 
-  // Files topbar (Files page)
+  // Files topbar
   $('btn-files')?.addEventListener('click', () => { state.tab = 'files'; listFiles(); });
   $('btn-trash')?.addEventListener('click', () => { state.tab = 'trash'; listFiles(); });
   $('btn-cards')?.addEventListener('click', () => { state.layout = 'grid'; listFiles(); });
   $('btn-rows') ?.addEventListener('click', () => { state.layout = 'rows'; listFiles(); });
   $('btn-profile')?.addEventListener('click', showProfile);
 
-  // Folders (Files page)
+  // Folders
   $('btn-folder-new')?.addEventListener('click', newFolder);
   $('btn-folder-rename')?.addEventListener('click', renameFolder);
   $('btn-folder-delete')?.addEventListener('click', deleteFolder);
@@ -104,16 +101,25 @@ sb.auth.getUser().then(({ data }) => {
   $('btn-save-profile')?.addEventListener('click', saveProfile);
   $('btn-back')?.addEventListener('click', showDashboard);
 
-  // Files upload (Files page)
+  // Uploads (Files page)
   const drop = $('drop-area');
   drop?.addEventListener('click', () => $('fileElem').click());
   drop?.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); });
   drop?.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
-  window.handleFiles = handleFiles; // input onchange
+  window.handleFiles = handleFiles;
 
   // PWA
   setupPWA();
-})();
+
+  // Sanity ping so you *know* wiring ran
+  console.log('StreamBox wired');
+  toast('App ready', 'info');
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', wire, { once:true });
+} else {
+  wire();
+}
 
 /* -------- Dashboard: Recent -------- */
 async function loadRecent(){
@@ -158,14 +164,13 @@ async function loadRecent(){
   });
 })();
 
-/* -------- Dashboard: Vault (placeholder demo) -------- */
+/* -------- Dashboard: Vault (placeholder) -------- */
 (function wireVault(){
   const btn = $('vault-unlock'); const stateEl = $('vault-state');
   if (!btn) return;
   btn.addEventListener('click', async () => {
     try{
       if (!window.PublicKeyCredential) throw new Error('WebAuthn not supported');
-      // Later: real WebAuthn challenge flow here.
       stateEl.textContent = 'Unlocked (demo)';
       toast('Vault unlocked (demo)', 'success');
     }catch(e){
