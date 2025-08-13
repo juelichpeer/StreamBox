@@ -1,0 +1,6 @@
+[functions]
+  directory = "netlify/functions"
+
+[template.environment]
+  SUPABASE_URL = "https://kulgncyhgksjdvprgfdy.supabase.co"
+  SUPABASE_SERVICE_KEY = ""  # fill in Netlify UI after first deploy
