@@ -36,3 +36,8 @@ button:disabled{opacity:.6; cursor:not-allowed}
 h1,h2,h3{margin:0 0 8px}
 /* lock scroll when menu open */
 body.no-scroll { overflow: hidden; }
+/* subtle focus ring for buttons */
+button:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand), transparent 80%);
+}

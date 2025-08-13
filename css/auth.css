@@ -1,10 +1,63 @@
-/* auth screen */
-.auth-wrap{display:grid; place-items:center; min-height:100vh}
-.auth-card{width:min(92vw, 480px); padding:18px}
-.brand{display:flex; align-items:center; gap:10px}
-.logo-dot{width:12px; height:12px; border-radius:50%; background:var(--brand)}
-.auth-row{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0}
-.auth-actions{display:flex; gap:10px}
-.divider{margin:12px 0; text-align:center}
-.oauth{display:flex; gap:10px; flex-wrap:wrap}
-.btn-apple,.btn-google{display:flex; gap:8px; align-items:center; padding:10px 12px}
+/* ===== Auth screen (StreamBox) ===== */
+
+.auth-wrap{display:grid;place-items:center;min-height:100vh;padding:24px}
+.auth-card{
+  width:min(92vw, 520px);
+  padding:22px;
+  border-radius:22px;
+}
+
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.logo-dot{width:12px;height:12px;border-radius:50%;background:var(--brand)}
+.sub{margin-bottom:14px}
+
+/* inputs */
+.auth-row{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  margin:14px 0 10px;
+}
+@media (max-width:560px){
+  .auth-row{ grid-template-columns:1fr; }
+}
+.auth-row input{
+  width:100%;
+  height:42px;
+  padding:0 12px;
+  border-radius:12px;
+  border:1px solid var(--stroke);
+  background:color-mix(in oklab, var(--card), white 4%);
+  color:var(--text);
+  outline:none;
+}
+.auth-row input::placeholder{ color: color-mix(in oklab, var(--muted), transparent 10%); }
+.auth-row input:focus{
+  border-color: color-mix(in oklab, var(--brand), transparent 30%);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand), transparent 85%);
+}
+
+/* actions */
+.auth-actions{display:flex;gap:10px;margin:2px 0 6px}
+.auth-actions .primary{
+  height:42px; padding:0 16px; border-radius:12px; font-weight:600;
+}
+
+/* divider */
+.divider{margin:12px 0;text-align:center;color:var(--muted)}
+
+/* OAuth buttons */
+.oauth{display:flex;gap:10px;flex-wrap:wrap}
+.btn-apple,.btn-google{
+  display:flex;align-items:center;gap:10px;
+  height:44px;padding:0 14px;border-radius:14px;
+  background:color-mix(in oklab, var(--bg-elev), white 3%);
+  border:1px solid var(--stroke); color:var(--text);
+}
+.btn-apple:hover,.btn-google:hover{
+  background:color-mix(in oklab, var(--bg-elev-strong), var(--brand-ghost) 50%);
+}
+.btn-apple svg, .btn-google svg{flex:0 0 auto}
+
+/* theme button on card header */
+#btn-theme-auth{border-radius:14px;padding:8px 12px}
