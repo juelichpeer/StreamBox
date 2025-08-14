@@ -1,0 +1,55 @@
+/* app-auth.js — email/pass, OAuth, session watcher */
+
+async function signUp() {
+  const email = $("email")?.value.trim(), pw = $("password")?.value;
+  if (!email || !pw) return toast("Enter email + password", "error");
+  const { error } = await sb.auth.signUp({ email, password: pw });
+  if (error) return toast("Sign up failed", "error", error.message);
+  toast("Check your email to confirm", "success");
+}
+
+async function signIn() {
+  const email = $("email")?.value.trim(), pw = $("password")?.value;
+  if (!email || !pw) return toast("Enter email + password", "error");
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) return toast("Login failed", "error", error.message);
+  setEmail(data.user);
+  if (typeof initOnce === "function") initOnce();
+  show("home");
+  if (typeof refresh === "function") await refresh();
+  toast("Welcome", "success");
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  toast("Signed out", "info");
+  show("auth");
+}
+
+async function oauth(provider) {
+  const redirectTo = window.location.origin + (window.location.pathname || "");
+  const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo } });
+  if (error) toast("OAuth error", "error", error.message);
+  else toast("Redirecting…", "info");
+}
+
+// Session watcher
+let INIT = false;
+sb.auth.onAuthStateChange((_e, session) => {
+  if (session?.user) {
+    setEmail(session.user);
+    if (!INIT && typeof initOnce === "function") initOnce();
+    show("home");
+    if (typeof refresh === "function") refresh();
+  } else {
+    show("auth");
+  }
+});
+sb.auth.getUser().then(({ data }) => {
+  if (data?.user) {
+    setEmail(data.user);
+    if (!INIT && typeof initOnce === "function") initOnce();
+    show("home");
+    if (typeof refresh === "function") refresh();
+  } else show("auth");
+});
