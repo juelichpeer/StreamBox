@@ -130,33 +130,48 @@ sb.auth.getUser().then(({ data }) => {
 });
 
 /* ---------- Files / Folders ---------- */
-const ext = (n) => (n?.split(".").pop() || "").toLowerCase();
-const isImg = (e) =>
-  ["png", "jpg", "jpeg", "webp", "gif", "avif"].includes(e);
+// =============================
+// 📂 FOLDER & FILE MANAGEMENT
+// =============================
 
-let state = { layout: "grid", tab: "files", folder: null, folders: [], search: null };
+// --- Helpers ---
+const ext = (n) => (n?.split(".").pop() || "").toLowerCase();
+const isImg = (e) => ["png", "jpg", "jpeg", "webp", "gif", "avif"].includes(e);
 
 function truncateName(name, max = 20) {
   return name.length > max ? name.slice(0, max - 3) + "..." : name;
 }
 
+let state = {
+  layout: "grid",
+  tab: "files",       // 'files' or 'trash'
+  folder: null,       // current folder object
+  folders: [],        // all folders
+  search: null        // search string
+};
+
+// --- Load Folders ---
 async function loadFolders() {
   const { data } = await sb
     .from("folders")
     .select("*")
     .order("created_at", { ascending: true });
+
   state.folders = [{ id: null, name: "All Files" }, ...(data || [])];
   renderFolders();
 }
 
+// --- Render Folders ---
 function renderFolders() {
   const ul = $("folders");
   if (!ul) return;
+
   ul.innerHTML = "";
   state.folders.forEach((f) => {
     const li = document.createElement("li");
     li.textContent = f.name;
     if (state.folder?.id === f.id) li.classList.add("active");
+
     li.onclick = () => {
       state.folder = f;
       listFiles();
@@ -164,6 +179,7 @@ function renderFolders() {
     };
     ul.appendChild(li);
   });
+
   const base = state.tab === "files" ? "Your Files" : "Trash";
   $("files-title").textContent =
     base +
@@ -171,80 +187,113 @@ function renderFolders() {
     (state.search ? ` — “${state.search}”` : "");
 }
 
+// --- Create Folder ---
 async function newFolder() {
   const name = prompt("Folder name:");
   if (name === null) return;
   if (!name.trim()) return;
+
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
+
   const { data, error } = await sb
     .from("folders")
     .insert([{ user_id: user.id, name: name.trim() }])
     .select()
     .single();
+
   if (error) return toast("New folder error", "error", error.message);
+
   state.folder = data;
   await loadFolders();
   await listFiles();
 }
+
+// --- Rename Folder ---
 async function renameFolder() {
   if (!state.folder?.id) return toast("Select a folder to rename", "error");
+
   const name = prompt("New folder name:", state.folder.name);
   if (!name) return;
+
   const { error } = await sb
     .from("folders")
     .update({ name: name.trim() })
     .eq("id", state.folder.id);
+
   if (error) return toast("Rename error", "error", error.message);
+
   await loadFolders();
 }
 
+// --- Delete Folder ---
 async function deleteFolder() {
   if (!state.folder?.id) return toast("Select a folder to delete", "error");
   if (!confirm("Delete this folder?")) return;
-  const { error } = await sb.from("folders").delete().eq("id", state.folder.id);
+
+  const { error } = await sb
+    .from("folders")
+    .delete()
+    .eq("id", state.folder.id);
+
   if (error) return toast("Delete folder error", "error", error.message);
+
   state.folder = null;
   await loadFolders();
   await listFiles();
 }
 
+// --- List Files ---
 async function listFiles() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
+
   let q = sb.from("files").select("*").eq("user_id", user.id);
   if (state.folder?.id) q = q.eq("folder_id", state.folder.id);
   if (state.tab === "trash") q = q.eq("trashed", true);
   else q = q.eq("trashed", false);
   if (state.search) q = q.ilike("name", `%${state.search}%`);
+
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) return toast("List error", "error", error.message);
+
   renderFiles(data || []);
 }
 
+// --- Render Files ---
 function renderFiles(arr) {
   const ul = $("list");
   if (!ul) return;
   ul.innerHTML = "";
+
   arr.forEach((f) => {
     const li = document.createElement("li");
     li.className = state.layout;
+
     const truncated = truncateName(f.name, 22);
+
     li.innerHTML = `
       <div class="file">
-        <div class="thumb">${isImg(ext(f.name)) ? `<img src="${f.url}" alt="${esc(f.name)}">` : `<span>${ext(f.name).toUpperCase()}</span>`}</div>
+        <div class="thumb">
+          ${isImg(ext(f.name))
+            ? `<img src="${f.url}" alt="${esc(f.name)}">`
+            : `<span>${ext(f.name).toUpperCase()}</span>`}
+        </div>
         <div class="meta">
           <strong title="${esc(f.name)}">${truncated}</strong>
           <small>${new Date(f.created_at).toLocaleString()}</small>
         </div>
-      </div>`;
+      </div>
+    `;
     ul.appendChild(li);
   });
 }
 
+// --- Recent Files ---
 async function recent() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
+
   const { data, error } = await sb
     .from("files")
     .select("*")
@@ -252,23 +301,30 @@ async function recent() {
     .eq("trashed", false)
     .order("created_at", { ascending: false })
     .limit(6);
+
   if (error) return toast("Recent error", "error", error.message);
+
   renderRecent(data || []);
 }
 
+// --- Render Recent Files ---
 function renderRecent(arr) {
   const ul = $("recent");
   if (!ul) return;
+
   ul.innerHTML = "";
   arr.forEach((f) => {
-    const li = document.createElement("li");
     const truncated = truncateName(f.name, 20);
-    li.innerHTML = `
-      <a href="${f.url}" target="_blank" title="${esc(f.name)}">${truncated}</a>
+    ul.innerHTML += `
+      <li>
+        <a href="${f.url}" target="_blank" title="${esc(f.name)}">
+          ${truncated}
+        </a>
+      </li>
     `;
-    ul.appendChild(li);
   });
 }
+
 
 /* Init */
 function initOnce() {
