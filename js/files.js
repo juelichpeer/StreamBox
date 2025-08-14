@@ -1,31 +1,97 @@
-import { sb, $, state, toast } from './config.js';
+// File extensions for previews
+const imageExts = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'];
+const docExts = ['pdf', 'txt', 'md', 'html', 'css', 'js'];
 
-// Fetch recent files
-export async function fetchRecent(limit = 6) {
-  const { data, error } = await sb
-    .from('files')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  return { data: data || [], error };
+// Get file extension
+function getExt(name) {
+  return name.split('.').pop().toLowerCase();
 }
 
-// Apply truncation to filenames
-function truncateName(name, maxLength = 20) {
-  if (!name) return '';
-  return name.length > maxLength ? name.slice(0, maxLength) + '…' : name;
+// Create file card with preview + menu
+function createFileItem(file) {
+  const li = document.createElement('li');
+  li.className = 'file-item';
+
+  const ext = getExt(file.filename);
+  const isImage = imageExts.includes(ext);
+  const isDoc = docExts.includes(ext);
+
+  li.innerHTML = `
+    <div class="file-card">
+      <div class="file-thumb">
+        ${
+          isImage
+            ? `<img src="${file.url}" alt="${file.filename}" />`
+            : `<span class="file-icon">${ext.toUpperCase()}</span>`
+        }
+      </div>
+      <div class="file-meta">
+        <strong>${truncateName(file.filename)}</strong>
+        <small>${new Date(file.created_at).toLocaleString()}</small>
+      </div>
+      <button class="file-menu-btn">⋮</button>
+    </div>
+  `;
+
+  // Open preview when clicking the thumbnail
+  li.querySelector('.file-thumb').addEventListener('click', () => {
+    openPreview(file, isImage, isDoc);
+  });
+
+  // Open menu
+  li.querySelector('.file-menu-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFileMenu(file);
+  });
+
+  return li;
 }
 
-// Render files into the main file browser
+// Preview modal
+function openPreview(file, isImage, isDoc) {
+  const modal = document.createElement('div');
+  modal.className = 'preview-modal';
+  modal.innerHTML = `
+    <div class="preview-content">
+      <button class="close-preview">✖</button>
+      ${
+        isImage
+          ? `<img src="${file.url}" alt="${file.filename}" />`
+          : isDoc
+          ? `<iframe src="${file.url}" frameborder="0"></iframe>`
+          : `<p>No preview available for this file type.</p>`
+      }
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('.close-preview').addEventListener('click', () => {
+    modal.remove();
+  });
+}
+
+// File actions menu
+function openFileMenu(file) {
+  const menu = document.createElement('div');
+  menu.className = 'file-menu';
+  menu.innerHTML = `
+    <button onclick="window.open('${file.url}', '_blank')">Download</button>
+    <button onclick="renameFile('${file.id}')">Rename</button>
+    <button onclick="deleteFile('${file.id}')">Delete</button>
+  `;
+  document.body.appendChild(menu);
+
+  // Close when clicking outside
+  document.addEventListener('click', () => menu.remove(), { once: true });
+}
+
+// Render file list
 export async function listFiles() {
   const container = $('file-list');
   if (!container) return;
   container.innerHTML = '';
 
-  const { data, error } = await sb
-    .from('files')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const { data, error } = await sb.from('files').select('*').order('created_at', { ascending: false });
 
   if (error) {
     container.innerHTML = `<li class="muted">Could not load files.</li>`;
@@ -38,59 +104,8 @@ export async function listFiles() {
   }
 
   data.forEach(file => {
-    const li = document.createElement('li');
-    li.className = 'file-item';
-
-    li.innerHTML = `
-      <span class="filename" title="${file.filename}">${truncateName(file.filename)}</span>
-      <span class="file-date">${new Date(file.created_at).toLocaleString()}</span>
-    `;
-    container.appendChild(li);
+    // Ensure file.url exists
+    file.url = sb.storage.from('files').getPublicUrl(file.filename).data.publicUrl;
+    container.appendChild(createFileItem(file));
   });
-}
-
-// Load recent files into dashboard
-export async function loadRecent() {
-  const ul = $('recent-list');
-  if (!ul) return;
-  ul.innerHTML = '';
-
-  const { data, error } = await fetchRecent(6);
-
-  if (error) {
-    ul.innerHTML = '<li class="muted">Could not load recent.</li>';
-    return;
-  }
-  if (!data.length) {
-    ul.innerHTML = '<li class="muted">Nothing yet.</li>';
-    return;
-  }
-
-  data.forEach(item => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <span class="filename" title="${item.filename}">${truncateName(item.filename)}</span>
-      <span class="file-date">${new Date(item.created_at).toLocaleString()}</span>
-    `;
-    ul.appendChild(li);
-  });
-}
-
-// Upload handler
-export async function handleFiles(files) {
-  if (!files.length) return;
-
-  for (const file of files) {
-    const { data, error } = await sb.storage.from('files').upload(file.name, file, {
-      upsert: true
-    });
-
-    if (error) {
-      toast(`Error uploading ${file.name}`, 'error');
-    } else {
-      toast(`${file.name} uploaded`, 'success');
-    }
-  }
-  listFiles();
-  loadRecent();
 }
