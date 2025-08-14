@@ -1,85 +1,93 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>StreamBox — Share</title>
-  <link rel="stylesheet" href="css/ui.css">
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-</head>
-<body class="nova">
-  <div class="ambient"></div>
-  <section class="stage show">
-    <div class="panel card" style="max-width:540px;margin:12vh auto;padding:18px">
-      <h2>Shared file</h2>
-      <p id="msg" class="muted">Loading…</p>
-      <div id="actions" class="row" style="margin-top:12px; display:none;">
-        <a id="download" class="primary" href="#" download>Download</a>
-        <button id="open" class="ghost">Open</button>
-      </div>
-
-      <hr style="opacity:.5;margin:14px 0">
-
-      <div id="auth-box">
-        <p class="muted">If this share is restricted, sign in:</p>
-        <div class="row" style="margin-top:8px">
-          <input id="email" type="email" placeholder="Email">
-          <input id="password" type="password" placeholder="Password">
-        </div>
-        <div class="row" style="margin-top:8px">
-          <button id="signin" class="ghost">Sign in</button>
-          <button id="signup" class="ghost">Sign up</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div id="toasts"></div>
-
-  <script>
-    const SUPABASE_URL = "https://kulgncyhgksjdvprgfdy.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGduY3loZ2tzamR2cHJnZmR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5OTA1ODQsImV4cCI6MjA3MDU2NjU4NH0.XA6R7qZDO1jypaCEeIfGJKo8DmUdpxcYBnB0Ih3K8ms";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const $ = id => document.getElementById(id);
-    const token = location.hash.replace(/^#/, '').trim();
-
-    $('signin').onclick = async ()=>{
-      const email=$('email').value.trim(), pw=$('password').value;
-      if(!email||!pw) return alert('Enter email + password');
-      const { error } = await sb.auth.signInWithPassword({ email, password: pw });
-      if(error) return alert('Login failed: '+error.message);
-      load();
-    };
-    $('signup').onclick = async ()=>{
-      const email=$('email').value.trim(), pw=$('password').value;
-      if(!email||!pw) return alert('Enter email + password');
-      const { error } = await sb.auth.signUp({ email, password: pw });
-      if(error) return alert('Sign up failed: '+error.message);
-      alert('Check your email to confirm');
-    };
-
-    async function load(){
-      if(!token){ $('msg').textContent='Invalid share link'; return; }
-      const { data:session } = await sb.auth.getSession();
-      const jwt = session?.session?.access_token || null;
-
-      const res = await fetch('/.netlify/functions/get-share?token='+encodeURIComponent(token), {
-        headers: jwt ? { 'Authorization': 'Bearer '+jwt } : {}
-      });
-      const j = await res.json();
-      if(!res.ok){
-        $('msg').textContent = j.error || 'Share error';
-        return;
-      }
-      $('msg').textContent = j.filename;
-      const a = $('download'), o=$('open');
-      a.href = j.url; a.setAttribute('download', j.filename);
-      o.onclick = ()=> window.open(j.url, '_blank');
-      $('actions').style.display = 'flex';
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shared File</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #0f1117;
+      color: white;
+      font-family: sans-serif;
     }
+    .file-card {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    .file-card h1 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-card a {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #4a9eff;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+    }
+    .muted {
+      opacity: 0.7;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
 
-    load();
-  </script>
+<div class="file-card" id="file-card">
+  <h1>Loading...</h1>
+  <p class="muted">Please wait</p>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Get token from URL
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+
+async function loadSharedFile() {
+  if (!token) {
+    document.querySelector('#file-card').innerHTML = '<p class="muted">No token provided.</p>';
+    return;
+  }
+
+  const { data, error } = await sb
+    .rpc('get_share', { token_in: token });
+
+  if (error || !data || !data.length) {
+    document.querySelector('#file-card').innerHTML = '<p class="muted">Share not found or expired.</p>';
+    return;
+  }
+
+  const share = data[0];
+  document.querySelector('#file-card').innerHTML = `
+    <h1 title="${share.filename}">${share.filename}</h1>
+    <p class="muted">Shared by ${share.owner_email || 'Unknown'}</p>
+    <a href="${share.file_url}" target="_blank">Download File</a>
+  `;
+}
+
+loadSharedFile();
+</script>
+
 </body>
 </html>

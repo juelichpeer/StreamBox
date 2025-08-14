@@ -94,3 +94,37 @@ input, .search{ height:42px; padding:0 12px; border-radius:12px; border:1px soli
   text-overflow: ellipsis;
   vertical-align: middle;
 }
+/* =========================================================
+   SECTION: Recent List — Filename Truncation (ellipsis)
+   FILE: css/ui.css
+   PURPOSE: Truncate long names in the dashboard "Recent" list
+   ========================================================= */
+#recent .row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+#recent .meta {
+  /* Critical so the .name child is allowed to shrink */
+  min-width: 0;
+}
+
+#recent .name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 420px; /* desktop */
+}
+
+@media (max-width: 1024px) {
+  #recent .name { max-width: 300px; }
+}
+@media (max-width: 768px) {
+  #recent .name { max-width: 200px; }
+}
+
+/* (Already in place for file grid/rows? Keep your existing .filename rules)
+   If you need a generic truncation class elsewhere, you can also use:
+   .filename { display:inline-block; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } */
