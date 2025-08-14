@@ -1,4 +1,4 @@
-/* app-auth.js — email/pass, OAuth, session watcher */
+/* app-auth.js — email/pass, OAuth, session watcher (init-safe) */
 
 async function signUp() {
   const email = $("email")?.value.trim(), pw = $("password")?.value;
@@ -14,9 +14,8 @@ async function signIn() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
   if (error) return toast("Login failed", "error", error.message);
   setEmail(data.user);
-  if (typeof initOnce === "function") initOnce();
   show("home");
-  if (typeof refresh === "function") await refresh();
+  refresh();
   toast("Welcome", "success");
 }
 
@@ -33,23 +32,13 @@ async function oauth(provider) {
   else toast("Redirecting…", "info");
 }
 
-// Session watcher
-let INIT = false;
+// Session watcher keeps UI in sync if tab refreshes or OAuth returns
 sb.auth.onAuthStateChange((_e, session) => {
   if (session?.user) {
     setEmail(session.user);
-    if (!INIT && typeof initOnce === "function") initOnce();
     show("home");
-    if (typeof refresh === "function") refresh();
+    refresh();
   } else {
     show("auth");
   }
-});
-sb.auth.getUser().then(({ data }) => {
-  if (data?.user) {
-    setEmail(data.user);
-    if (!INIT && typeof initOnce === "function") initOnce();
-    show("home");
-    if (typeof refresh === "function") refresh();
-  } else show("auth");
 });

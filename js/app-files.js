@@ -1,4 +1,11 @@
-/* app-files.js — listFiles + render, in-app preview, kebab menu, uploads, trash/restore/delete, share links */
+/* app-files.js — listFiles + render (backward-compatible), preview, menu, uploads, trash/restore/delete, share */
+
+function fileNameOf(row){ return row.filename ?? row.name ?? ""; }
+function isTrashed(row){
+  // support either deleted_at (timestamp) or trashed (boolean)
+  if (typeof row.trashed === "boolean") return row.trashed;
+  return !!row.deleted_at;
+}
 
 async function listFiles() {
   const container = $("list");
@@ -7,35 +14,48 @@ async function listFiles() {
   container.className = state.layout === "grid" ? "grid" : "row";
   container.innerHTML = "";
 
+  // Build a query that works with either schema variant
   let q = sb.from("files").select("*").order("created_at", { ascending: false });
-  q = state.tab === "files" ? q.is("deleted_at", null) : q.not("deleted_at", "is", null);
+
+  // Filter tab (files vs trash) in a compatible way
+  if (state.tab === "files") {
+    q = q.or("trashed.eq.false,deleted_at.is.null"); // match either
+  } else {
+    q = q.or("trashed.eq.true,deleted_at.not.is.null");
+  }
+
   if (state.folder?.id) q = q.eq("folder_id", state.folder.id);
-  if (state.search && state.search.trim().length >= 2) q = q.ilike("filename", `%${state.search.trim()}%`);
+
+  // Search across filename OR name
+  if (state.search && state.search.trim().length >= 2) {
+    const term = state.search.trim();
+    q = q.or(`filename.ilike.%${term}%,name.ilike.%${term}%`);
+  }
 
   const { data, error } = await q;
   if (error) { container.innerHTML = `<li class="muted">List error: ${esc(error.message)}</li>`; return; }
   if (!data?.length) { container.innerHTML = `<li class="muted">${state.search ? "No results." : "No files yet."}</li>`; renderFolders(); return; }
 
   for (const f of data) {
-    const bucket = f.deleted_at ? "user-trash" : "user-files";
+    const fname = fileNameOf(f);
+    const bucket = isTrashed(f) ? "user-trash" : "user-files";
     const sig = await sb.storage.from(bucket).createSignedUrl(f.filepath, 180);
     const url = sig.data?.signedUrl || null;
-    const e = ext(f.filename);
+    const e = ext(fname);
 
     if (state.layout === "grid") {
       const li = document.createElement("li"); li.className = "item";
 
       const ph = document.createElement("div"); ph.className = "ph";
-      if (url && isImg(e)) ph.innerHTML = `<img src="${url}" alt="${esc(f.filename)}" loading="lazy">`;
+      if (url && isImg(e)) ph.innerHTML = `<img src="${url}" alt="${esc(fname)}" loading="lazy">`;
       else ph.innerHTML = `<div class="chip">${(e || "FILE").toUpperCase()}</div>`;
 
-      const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = truncateName(f.filename, 24); nm.title = f.filename;
+      const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = truncateName(fname, 24); nm.title = fname;
 
       const keb = document.createElement("div"); keb.className = "kebab";
       keb.onclick = (ev) => openFileMenu(ev, f, url);
 
-      // click preview
-      ph.onclick = () => openPreview(f, url);
+      ph.onclick = () => openPreview({ ...f, filename: fname }, url);
 
       li.appendChild(ph); li.appendChild(nm); li.appendChild(keb);
       container.appendChild(li);
@@ -43,14 +63,14 @@ async function listFiles() {
       const li = document.createElement("li"); li.className = "row-item";
 
       const th = document.createElement("div"); th.className = "row-thumb";
-      if (url && isImg(e)) th.innerHTML = `<img src="${url}" alt="${esc(f.filename)}" loading="lazy">`;
+      if (url && isImg(e)) th.innerHTML = `<img src="${url}" alt="${esc(fname)}" loading="lazy">`;
 
-      const nm = document.createElement("div"); nm.textContent = truncateName(f.filename, 36); nm.title = f.filename;
+      const nm = document.createElement("div"); nm.textContent = truncateName(fname, 36); nm.title = fname;
 
       const keb = document.createElement("div"); keb.className = "kebab-row";
       keb.onclick = (ev) => openFileMenu(ev, f, url);
 
-      th.onclick = () => openPreview(f, url);
+      th.onclick = () => openPreview({ ...f, filename: fname }, url);
 
       li.appendChild(th); li.appendChild(nm); li.appendChild(keb);
       container.appendChild(li);
@@ -59,20 +79,20 @@ async function listFiles() {
   renderFolders();
 }
 
-/* In-app preview (simple) */
+/* In-app preview */
 function openPreview(fileRow, signedUrl) {
+  const fname = fileNameOf(fileRow) || fileRow.filename || "File";
   if (!signedUrl) return toast("No preview", "info");
-  // Reuse a modal element if you have one; here a bare-bones approach:
   const modal = document.createElement("div");
   modal.className = "overlay";
   modal.innerHTML = `
     <div class="modal" style="max-width:900px; width:90vw; height:80vh; display:flex; flex-direction:column;">
       <div class="row between" style="margin-bottom:10px;">
-        <strong>${esc(fileRow.filename)}</strong>
+        <strong>${esc(fname)}</strong>
         <button class="ghost" id="pv-close">Close</button>
       </div>
       <div style="flex:1; overflow:auto; display:flex; align-items:center; justify-content:center;">
-        ${isImg(ext(fileRow.filename))
+        ${isImg(ext(fname))
           ? `<img src="${signedUrl}" style="max-width:100%; max-height:100%; object-fit:contain;">`
           : `<iframe src="${signedUrl}" style="width:100%; height:100%; border:none;"></iframe>`}
       </div>
@@ -82,7 +102,7 @@ function openPreview(fileRow, signedUrl) {
   modal.querySelector("#pv-close").onclick = () => modal.remove();
 }
 
-/* Kebab menu */
+/* Kebab actions */
 function openFileMenu(ev, f, url) {
   document.querySelectorAll(".menu").forEach((m) => m.remove());
   const m = document.createElement("div");
@@ -94,11 +114,13 @@ function openFileMenu(ev, f, url) {
     b.onclick = () => { m.remove(); fn(); };
     m.appendChild(b);
   };
-  if (!f.deleted_at) {
+
+  const fname = fileNameOf(f);
+  if (!isTrashed(f)) {
     add("Open", () => { if (url) window.open(url, "_blank"); else toast("No preview", "info"); });
-    add("Preview", () => openPreview(f, url));
-    add("Download", () => { if (!url) return; const a = document.createElement("a"); a.href = url; a.download = f.filename; a.click(); });
-    add("Share link…", () => shareLinkCreate(f));
+    add("Preview", () => openPreview({ ...f, filename: fname }, url));
+    add("Download", () => { if (!url) return; const a = document.createElement("a"); a.href = url; a.download = fname; a.click(); });
+    add("Share link…", () => shareLinkCreate({ ...f, filename: fname }));
     add("Move to Trash", () => moveToTrash(f));
   } else {
     add("Restore", () => restoreFile(f));
@@ -106,13 +128,13 @@ function openFileMenu(ev, f, url) {
   }
   document.body.appendChild(m);
   m.style.left = ev.pageX + "px";
-  m.style.top = ev.pageY + "px";
+  m.style.top  = ev.pageY + "px";
   m.style.position = "absolute";
   m.style.zIndex = 9999;
   document.addEventListener("click", () => m.remove(), { once: true });
 }
 
-/* Uploads (drop areas already wired in app-init) */
+/* Uploads */
 async function handleFiles(fileList) {
   const { data: sess } = await sb.auth.getSession();
   const user = sess?.session?.user;
@@ -129,15 +151,21 @@ async function handleFiles(fileList) {
     const ins = await sb.from("files").insert([{
       user_id: user.id,
       folder_id: state.folder?.id || null,
-      filename: file.name,
-      filepath: path
+      filename: file.name,           // preferred column
+      name: file.name,               // fallback column (if your table uses 'name')
+      filepath: path,
+      deleted_at: null,              // ensure visible in 'files' tab
+      trashed: false                 // for boolean schema
     }]);
-    if (ins.error) { await sb.storage.from("user-files").remove([path]); toast("DB insert error", "error", ins.error.message); }
+    if (ins.error) {
+      await sb.storage.from("user-files").remove([path]);
+      toast("DB insert error", "error", ins.error.message);
+    }
   }
-  if (typeof refresh === "function") await refresh();
+  refresh();
 }
 
-/* Trash / Restore / Delete forever */
+/* Trash / Restore / Delete */
 async function moveToTrash(f) {
   if (!confirm("Trash this file?")) return;
   const d = await sb.storage.from("user-files").download(f.filepath);
@@ -145,32 +173,43 @@ async function moveToTrash(f) {
   const u = await sb.storage.from("user-trash").upload(f.filepath, d.data, { upsert: true });
   if (u.error) return toast("Move error", "error", u.error.message);
   await sb.storage.from("user-files").remove([f.filepath]);
-  const x = await sb.from("files").update({ deleted_at: new Date().toISOString() }).eq("id", f.id);
-  if (x.error) return toast("DB error", "error", x.error.message);
-  if (typeof refresh === "function") refresh();
+
+  // update either schema
+  const upd = await sb.from("files").update({
+    deleted_at: new Date().toISOString(),
+    trashed: true
+  }).eq("id", f.id);
+  if (upd.error) return toast("DB error", "error", upd.error.message);
+  refresh();
 }
+
 async function restoreFile(f) {
   const d = await sb.storage.from("user-trash").download(f.filepath);
   if (d.error) return toast("Trash download error", "error", d.error.message);
   const u = await sb.storage.from("user-files").upload(f.filepath, d.data, { upsert: true });
   if (u.error) return toast("Restore error", "error", u.error.message);
   await sb.storage.from("user-trash").remove([f.filepath]);
-  const x = await sb.from("files").update({ deleted_at: null }).eq("id", f.id);
-  if (x.error) return toast("DB error", "error", x.error.message);
-  if (typeof refresh === "function") refresh();
+
+  const upd = await sb.from("files").update({
+    deleted_at: null,
+    trashed: false
+  }).eq("id", f.id);
+  if (upd.error) return toast("DB error", "error", upd.error.message);
+  refresh();
 }
+
 async function deleteForever(f) {
   if (!confirm("Delete forever?")) return;
   const r = await sb.storage.from("user-trash").remove([f.filepath]);
   if (r.error) return toast("Storage error", "error", r.error.message);
   const d = await sb.from("files").delete().eq("id", f.id);
   if (d.error) return toast("DB error", "error", d.error.message);
-  if (typeof refresh === "function") refresh();
+  refresh();
 }
 
-/* Share links (revocable) */
+/* Shares (unchanged) */
 async function shareLinkCreate(f) {
-  if (f.deleted_at) return toast("Restore file before sharing", "info");
+  if (isTrashed(f)) return toast("Restore file before sharing", "info");
 
   let mins = prompt("Link expires in minutes (default 60):", "60");
   if (mins === null) return;
@@ -206,11 +245,6 @@ async function shareLinkCreate(f) {
   if (ins.error) return toast("Share create error", "error", ins.error.message);
 
   const appUrl = `${location.origin}/share.html#${token}`;
-  try {
-    await navigator.clipboard.writeText(appUrl);
-    toast("Share created (copied)", "success", appUrl);
-  } catch {
-    alert("Share URL:\n\n" + appUrl);
-    toast("Share created", "success");
-  }
+  try { await navigator.clipboard.writeText(appUrl); toast("Share created (copied)", "success", appUrl); }
+  catch { alert("Share URL:\n\n" + appUrl); toast("Share created", "success"); }
 }

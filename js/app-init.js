@@ -1,11 +1,11 @@
-/* app-init.js — wiring DOM events + refresh */
+/* app-init.js — wiring DOM events + refresh (INIT on load) */
 
 function initOnce() {
   if (window.__INIT_DONE__) return;
   window.__INIT_DONE__ = true;
   applyTheme();
 
-  // Auth buttons
+  // Auth
   $("btn-signup")?.addEventListener("click", signUp);
   $("btn-signin")?.addEventListener("click", signIn);
   $("btn-signout")?.addEventListener("click", signOut);
@@ -15,9 +15,9 @@ function initOnce() {
 
   // Nav
   $("nav-files")?.addEventListener("click", () => { show("files"); listFiles(); });
-  $("nav-home")?.addEventListener("click", () => { show("home"); recent(); });
+  $("nav-home") ?.addEventListener("click", () => { show("home");  recent();   });
   $("btn-profile")?.addEventListener("click", () => { show("profile"); });
-  $("back-home")?.addEventListener("click", () => { show("home"); });
+  $("back-home")  ?.addEventListener("click", () => { show("home"); });
 
   // Files topbar
   $("btn-cards")?.addEventListener("click", () => { state.layout = "grid"; listFiles(); });
@@ -35,9 +35,9 @@ function initOnce() {
   // Uploads – Files page
   const browse = $("browse"), fi = $("file-input"), drop = $("drop");
   browse?.addEventListener("click", (e) => { e.preventDefault(); fi?.click(); });
-  fi   ?.addEventListener("change", (e) => handleFiles(e.target.files));
-  drop ?.addEventListener("dragover", (e) => e.preventDefault());
-  drop ?.addEventListener("drop", (e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
+  fi    ?.addEventListener("change", (e) => handleFiles(e.target.files));
+  drop  ?.addEventListener("dragover", (e) => e.preventDefault());
+  drop  ?.addEventListener("drop", (e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
 
   // Quick upload – Dashboard
   const qb = $("quick-browse"), qi = $("quick-input"), qd = $("quick");
@@ -76,24 +76,29 @@ function initOnce() {
       }
     });
   }
+}
 
-  // PWA install button
-  let deferredPrompt = null;
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault(); deferredPrompt = e;
-    const b = $("btn-install");
-    if (b) {
-      b.style.display = "inline-block";
-      b.onclick = async () => {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-      };
+// Always init on DOM ready so login buttons work even before a session exists
+document.addEventListener("DOMContentLoaded", () => {
+  try { initOnce(); } catch {}
+  // Try to populate dashboard/files if already logged in
+  sb.auth.getUser().then(({ data }) => {
+    if (data?.user) {
+      setEmail(data.user);
+      show("home");
+      refresh();
+    } else {
+      show("auth");
     }
   });
-}
+});
 
+// Shared refresh used across the app
 async function refresh() {
-  await Promise.all([loadFolders(), listFiles(), recent(), stats()]);
+  await Promise.all([
+    loadFolders(),
+    listFiles(),
+    recent(),
+    stats()
+  ]);
 }
-
